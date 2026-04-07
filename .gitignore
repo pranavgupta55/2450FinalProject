@@ -3,3 +3,4 @@ __pycache__/
 *.py[cod]
 
 data/raw_data/
+data/test_ds/

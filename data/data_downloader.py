@@ -10,6 +10,7 @@ import requests
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from tqdm.auto import tqdm
 
 
 FINNHUB_KEY = "d7anmf9r01qtpbh969ngd7anmf9r01qtpbh969o0"
@@ -17,10 +18,15 @@ SEC_USER_AGENT_DEFAULT = "Rishabh Tole rtole@seas.upenn.edu"
 
 REQUEST_TIMEOUT = 30
 SLEEP_SEC = 0.25
+PIPELINE_STEP_COUNT = 8
 
 
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+
+
+def progress_bar(iterable, total: int | None = None, desc: str = ""):
+    return tqdm(iterable, total=total, desc=desc, leave=False)
 
 
 def get_date_range(years: int) -> tuple[str, str]:
@@ -94,7 +100,7 @@ def fetch_price_data(tickers: list[str], start: str, end: str) -> pd.DataFrame:
     print("[INFO] Downloading price data...")
     frames = []
 
-    for raw_ticker in tickers:
+    for raw_ticker in progress_bar(tickers, total=len(tickers), desc="Price data"):
         ticker = normalize_ticker_for_yfinance(raw_ticker)
         try:
             df = yf.download(
@@ -435,7 +441,7 @@ def build_coverage_summary(
     yahoo_df: pd.DataFrame,
 ) -> pd.DataFrame:
     rows = []
-    for ticker in tickers:
+    for ticker in progress_bar(tickers, total=len(tickers), desc="Coverage summary"):
         rows.append(
             {
                 "ticker": ticker,
@@ -461,6 +467,7 @@ def save_df(df: pd.DataFrame, base_path_no_ext: str) -> None:
 
 def run_pipeline(args) -> None:
     ensure_dir(args.outdir)
+    step_progress = tqdm(total=PIPELINE_STEP_COUNT, desc="Pipeline steps")
 
     start, end = get_date_range(args.years)
 
@@ -475,18 +482,22 @@ def run_pipeline(args) -> None:
     print(f"[INFO] Using {len(tickers)} tickers from {start} to {end}")
 
     price_df = fetch_price_data(tickers, start, end)
+    step_progress.update(1)
     if price_df.empty:
+        step_progress.close()
         raise RuntimeError("No price data downloaded.")
 
     price_features_df = compute_alpha_and_labels(price_df, start, end)
     save_df(price_df, os.path.join(args.outdir, "prices_raw"))
     save_df(price_features_df, os.path.join(args.outdir, "price_features"))
+    step_progress.update(1)
 
     cik_map = build_ticker_to_cik_map()
+    step_progress.update(1)
 
     print("[INFO] Fetching SEC filings metadata...")
     sec_meta_rows = []
-    for ticker in tickers:
+    for ticker in progress_bar(tickers, total=len(tickers), desc="SEC metadata"):
         sec_meta_rows.extend(fetch_sec_8k_filings_for_ticker(ticker, cik_map, args.sec_user_agent))
         time.sleep(SLEEP_SEC)
 
@@ -496,11 +507,16 @@ def run_pipeline(args) -> None:
             columns=["ticker", "cik", "filing_date", "form", "accession_number", "primary_document", "filing_url"]
         )
     save_df(sec_meta_df, os.path.join(args.outdir, "sec_filings_meta"))
+    step_progress.update(1)
 
     print("[INFO] Fetching SEC filing text...")
     sec_text_rows = []
     if not sec_meta_df.empty:
-        for _, row in sec_meta_df.iterrows():
+        for _, row in progress_bar(
+            sec_meta_df.iterrows(),
+            total=len(sec_meta_df),
+            desc="SEC filing text",
+        ):
             filing_text = fetch_sec_filing_text(row["filing_url"], args.sec_user_agent)
             sec_text_rows.append(
                 {
@@ -519,11 +535,12 @@ def run_pipeline(args) -> None:
             columns=["ticker", "filing_date", "accession_number", "filing_url", "filing_text"]
         )
     save_df(sec_text_df, os.path.join(args.outdir, "sec_filings_text"))
+    step_progress.update(1)
 
     print("[INFO] Fetching Finnhub news...")
     finnhub_rows = []
     if args.finnhub_key:
-        for ticker in tickers:
+        for ticker in progress_bar(tickers, total=len(tickers), desc="Finnhub news"):
             finnhub_rows.extend(fetch_finnhub_news(ticker, start, end, args.finnhub_key))
             time.sleep(SLEEP_SEC)
 
@@ -533,10 +550,11 @@ def run_pipeline(args) -> None:
             columns=["ticker", "date", "headline", "summary", "source", "url", "category", "image"]
         )
     save_df(finnhub_df, os.path.join(args.outdir, "finnhub_news"))
+    step_progress.update(1)
 
     print("[INFO] Fetching Yahoo RSS fallback news...")
     yahoo_rows = []
-    for ticker in tickers:
+    for ticker in progress_bar(tickers, total=len(tickers), desc="Yahoo RSS"):
         yahoo_rows.extend(fetch_yahoo_rss_news(ticker))
         time.sleep(SLEEP_SEC)
 
@@ -546,6 +564,7 @@ def run_pipeline(args) -> None:
             columns=["ticker", "date", "headline", "summary", "source", "url"]
         )
     save_df(yahoo_df, os.path.join(args.outdir, "yahoo_news"))
+    step_progress.update(1)
 
     weekly_event_df = build_weekly_event_dataset(
         tickers=tickers,
@@ -564,6 +583,8 @@ def run_pipeline(args) -> None:
         yahoo_df=yahoo_df,
     )
     save_df(coverage_summary_df, os.path.join(args.outdir, "coverage_summary_by_ticker"))
+    step_progress.update(1)
+    step_progress.close()
 
     coverage_overall = {
         "date_generated": datetime.now().isoformat(),
