@@ -51,7 +51,18 @@ def normalize_ticker_for_sec_lookup(ticker: str) -> str:
 
 def get_sp500_table() -> pd.DataFrame:
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    tables = pd.read_html(url)
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
+    response = safe_request(url, headers=headers)
+    if response is None:
+        raise RuntimeError("Failed to fetch S&P 500 company list from Wikipedia")
+
+    tables = pd.read_html(StringIO(response.text))
     df = tables[0].copy()
     df["Symbol"] = df["Symbol"].astype(str).str.strip()
     return df
