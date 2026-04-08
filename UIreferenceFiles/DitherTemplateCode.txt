@@ -1,0 +1,889 @@
+pranavgupta@hnt-08225 DitherTemplate % find . -type f \( -name "*.ts" -o -name "*.tsx" \) \                    
+-not -path "./node_modules/*" \
+-not -path "./.next/*" \
+-exec sh -c 'echo "\n===== $1 ====="; bat --paging=never --style=plain "$1"' _ {} \;
+
+===== ./app/layout.tsx =====
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+import "./globals.css";
+import { Background } from "@/components/layout/Background";
+import { SectionNav } from "@/components/layout/SectionNav";
+
+
+export const metadata: Metadata = {
+  title: {
+    default: "Tactical Editorial Terminal",
+    template: "%s | Tactical Editorial Terminal",
+  },
+  description: "A premium technical aesthetic template.",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="relative min-h-screen overflow-x-hidden font-sans antialiased selection:bg-accent-gold/20 selection:text-accent-gold">
+        <Background />
+        <SectionNav />
+        <main className="relative z-10 flex min-h-screen flex-col items-center px-6 py-24 xl:ml-32">
+          <div className="w-full max-w-5xl">{children}</div>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+===== ./app/page.tsx =====
+"use client";
+
+import { useState } from "react";
+
+import { BottomSheet } from "@/components/layout/BottomSheet";
+import { Badge, CodeLink, ColorSwatch, DataCard, Eyebrow } from "@/components/ui/TacticalUI";
+
+type ToolId = "feature-toggle" | "inspector";
+type BadgeVariant = "red" | "gold" | "green" | "dim";
+
+const palette = [
+  { label: "Background Base", hex: "#111110", colorClass: "bg-bg-base" },
+  { label: "Background Panel", hex: "rgba(255,255,255,0.02)", colorClass: "bg-bg-panel" },
+  { label: "Inspector", hex: "#151412", colorClass: "bg-bg-inspector" },
+  { label: "Border Light", hex: "rgba(255,255,255,0.06)", colorClass: "bg-border-light border-white/20" },
+  { label: "Text Main", hex: "#E8E0D4", colorClass: "bg-text-main" },
+  { label: "Text Dimmed", hex: "#7A7873", colorClass: "bg-text-dim" },
+  { label: "Accent Gold", hex: "#C4A052", colorClass: "bg-accent-gold" },
+  { label: "Accent Red", hex: "#AD544B", colorClass: "bg-accent-red" },
+] as const;
+
+const treePalette = [
+  { label: "Tree Blue", hex: "#7C9FB4", colorClass: "bg-tree-blue" },
+  { label: "Tree Green", hex: "#79A773", colorClass: "bg-tree-green" },
+  { label: "Tree Yellow", hex: "#D1A556", colorClass: "bg-tree-yellow" },
+  { label: "Tree Rust", hex: "#C17C5F", colorClass: "bg-tree-rust" },
+  { label: "Tree Purple", hex: "#9C7EB8", colorClass: "bg-tree-purple" },
+  { label: "Tree Grey", hex: "#8A857F", colorClass: "bg-tree-grey" },
+] as const;
+
+const toolDetails: Record<
+  ToolId,
+  {
+    title: string;
+    badge: string;
+    badgeVariant: BadgeVariant;
+    subtitle: string;
+    body: string;
+    files: readonly string[];
+  }
+> = {
+  "feature-toggle": {
+    title: "Feature Toggle",
+    badge: "Feature Control",
+    badgeVariant: "red",
+    subtitle: "State Management",
+    body:
+      "Feature toggles let you expose or hide functionality without redeploying the whole application. They are useful for staged rollouts, experiments, and role-based access patterns.",
+    files: ["app/page.tsx", "components/ui/TacticalUI.tsx", "components/layout/BottomSheet.tsx"],
+  },
+  inspector: {
+    title: "Inspector",
+    badge: "Layout Systems",
+    badgeVariant: "red",
+    subtitle: "Interactive State",
+    body:
+      "The inspector pane slides up from the bottom to provide extra context without making you lose your place in the broader grid view. It is designed for technical documentation and component deep dives.",
+    files: ["components/layout/BottomSheet.tsx", "app/page.tsx"],
+  },
+};
+
+export default function Showcase() {
+  const [selectedTool, setSelectedTool] = useState<ToolId | null>(null);
+  const activeTool = selectedTool ? toolDetails[selectedTool] : null;
+
+  return (
+    <div className="space-y-48 pb-48">
+      <section id="overview" className="max-w-3xl scroll-mt-32 space-y-8 pt-16">
+        <div className="flex items-center gap-4">
+          <span className="font-sans text-sm uppercase tracking-widest text-accent-red">01</span>
+          <div className="h-px w-12 bg-border-light" />
+        </div>
+        <h1 className="text-5xl font-bold tracking-tight md:text-7xl">
+          <span className="font-sans">Dither</span>{" "}
+          <span className="font-serif text-accent-red">Template</span>
+        </h1>
+        <p className="max-w-2xl font-serif text-lg leading-relaxed text-text-dim">
+          A tactical, editorial terminal aesthetic. This page acts as a living design system,
+          showcasing the built-in elements, layout primitives, and typography pairings.
+        </p>
+        <div className="pt-4">
+          <Badge variant="dim">Version 1.0.0</Badge>
+        </div>
+      </section>
+
+      <section id="typography" className="scroll-mt-32 space-y-12">
+        <Eyebrow title="Typography System" count="2 Typefaces" />
+
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+        <div className="space-y-4 rounded-xl border border-border-light bg-bg-panel p-6">
+          <h3 className="font-serif text-3xl text-text-main">Glosa W01 Black</h3>
+          <p className="font-sans text-sm text-text-dim">
+            Display face. Use it for major headlines, hero moments, and high-contrast editorial titles.
+          </p>
+          <div className="border-t border-border-light/50 pt-4 font-serif text-lg text-text-main">
+            The quick brown fox jumps over the lazy dog.
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-border-light bg-bg-panel p-6">
+          <h3 className="font-sans text-3xl font-bold tracking-tight text-text-main">Slippery Trial</h3>
+          <p className="font-sans text-sm text-text-dim">
+            Primary working face. Use it for interface text, body copy, labels, and supporting content.
+          </p>
+          <div className="border-t border-border-light/50 pt-4 font-sans text-lg text-text-main">
+            The quick brown fox jumps over the lazy dog.
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-border-light bg-bg-panel p-6 md:col-span-2">
+          <h3 className="font-mono text-2xl text-text-main">Slippery Trial (UI / Code)</h3>
+          <p className="font-sans text-sm text-text-dim">
+            This template now uses Slippery for mono-style utility text as well, so the whole system stays
+            inside your uploaded font set.
+          </p>
+          <div className="border-t border-border-light/50 pt-4 font-mono text-sm text-code-text">
+            0123456789 !@#$%^&amp;*() app/page.tsx components/layout/BottomSheet.tsx
+          </div>
+        </div>
+      </div>
+      </section>
+
+      <section id="colors" className="scroll-mt-32 space-y-12">
+        <Eyebrow title="Design Tokens" count="Tactical Palette" />
+
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
+          {palette.map((swatch) => (
+            <ColorSwatch key={swatch.label} {...swatch} />
+          ))}
+
+          <div className="col-span-full mt-4">
+            <Eyebrow title="Data Visualization Colors" count={"Treemap & Charts"} />
+          </div>
+
+          {treePalette.map((swatch) => (
+            <ColorSwatch key={swatch.label} {...swatch} />
+          ))}
+        </div>
+      </section>
+
+      <section id="components" className="scroll-mt-32 space-y-12">
+        <Eyebrow title="Interactive Primitives" count={"Data Cards & Badges"} />
+
+        <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2">
+          <div className="space-y-6">
+            <div className="border-b border-border-light pb-2 font-sans text-xs uppercase tracking-widest text-text-dim">
+              Data Grids
+            </div>
+            <div className="flex flex-col gap-2">
+              <DataCard
+                label="Feature Toggle"
+                state={selectedTool === "feature-toggle" ? "active" : "default"}
+                onClick={() => setSelectedTool("feature-toggle")}
+              />
+              <DataCard
+                label="Inspector"
+                state={selectedTool === "inspector" ? "active" : "default"}
+                onClick={() => setSelectedTool("inspector")}
+              />
+              <DataCard label="LegacySystemConfig" state="locked" />
+            </div>
+            <p className="pt-2 font-serif text-sm text-text-dim">
+              Click a live card above to trigger the bottom sheet overlay.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="border-b border-border-light pb-2 font-sans text-xs uppercase tracking-widest text-text-dim">
+              Badges &amp; Links
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <Badge variant="gold">System Setup</Badge>
+              <Badge variant="green">Active Task</Badge>
+              <Badge variant="dim">Deprecated</Badge>
+            </div>
+            <div className="pt-4">
+              <CodeLink>app/page.tsx</CodeLink>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <BottomSheet
+        isOpen={activeTool !== null}
+        onClose={() => setSelectedTool(null)}
+        title={activeTool?.title}
+      >
+        {activeTool ? (
+          <>
+            <div className="mb-6 flex items-center gap-3">
+              <Badge variant={activeTool.badgeVariant}>{activeTool.badge}</Badge>
+              <span className="font-sans text-sm text-text-dim">{activeTool.subtitle}</span>
+            </div>
+
+            <p className="mb-8 max-w-2xl leading-relaxed text-text-dim">{activeTool.body}</p>
+
+            <div className="space-y-3">
+              <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                Relevant Files
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {activeTool.files.map((file) => (
+                  <CodeLink key={file}>{file}</CodeLink>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
+      </BottomSheet>
+    </div>
+  );
+}
+
+===== ./next-env.d.ts =====
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+===== ./tailwind.config.ts =====
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content:[
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        bg: {
+          base: "var(--bg-base)",
+          panel: "var(--bg-panel)",
+          inspector: "var(--bg-inspector)",
+        },
+        accent: {
+          gold: "var(--accent-gold)",
+          red: "var(--accent-red)",
+          green: "var(--accent-green)",
+        },
+        text: {
+          main: "var(--text-main)",
+          dim: "var(--text-dim)",
+        },
+        border: {
+          light: "var(--border-light)",
+          dashed: "var(--border-dashed)",
+        },
+        code: {
+          text: "var(--color-code-text)",
+          green: "var(--color-code-green)",
+        },
+        // New Treemap Colors mapped to Tailwind
+        tree: {
+          blue: "var(--tree-blue)",
+          green: "var(--tree-green)",
+          yellow: "var(--tree-yellow)",
+          rust: "var(--tree-rust)",
+          purple: "var(--tree-purple)",
+          grey: "var(--tree-grey)",
+        }
+      },
+      fontFamily: {
+        serif:["var(--font-playfair)", "serif"],
+        sans:["var(--font-inter)", "sans-serif"],
+        mono:["var(--font-jetbrains)", "monospace"],
+      },
+      animation: {
+        "grid-shift": "grid-shift 20s linear infinite",
+      },
+      keyframes: {
+        "grid-shift": {
+          "0%": { transform: "translateY(0) translateX(0)" },
+          "100%": { transform: "translateY(32px) translateX(32px)" },
+        },
+      },
+    },
+  },
+  plugins:[],
+};
+export default config;
+===== ./components/ui/TacticalUI.tsx =====
+import type { ReactNode } from "react";
+
+import { ExternalLink, Lock } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+export function Eyebrow({ title, count }: { title: string; count?: string }) {
+  return (
+    <div className="mb-4 flex flex-col gap-1">
+      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.15em] text-accent-red">
+        {title}
+      </span>
+      {count ? <span className="font-sans text-[10px] capitalize text-text-dim">{count}</span> : null}
+    </div>
+  );
+}
+
+type BadgeVariant = "red" | "gold" | "green" | "dim";
+
+export function Badge({
+  children,
+  variant = "red",
+}: {
+  children: ReactNode;
+  variant?: BadgeVariant;
+}) {
+  const variants: Record<BadgeVariant, string> = {
+    red: "border-accent-red/30 bg-accent-red/20 text-accent-red",
+    green: "border-accent-green/20 bg-accent-green/10 text-accent-green",
+    gold: "border-accent-gold/20 bg-accent-gold/10 text-accent-gold",
+    dim: "border-white/10 bg-white/5 text-text-dim",
+  };
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 font-sans text-[10px] uppercase tracking-wider",
+        variants[variant],
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function CodeLink({ href, children }: { href?: string; children: ReactNode }) {
+  const sharedClasses =
+    "inline-flex w-fit items-center gap-2 rounded-md border border-accent-green/20 bg-accent-green/5 px-3 py-1.5 transition-colors";
+
+  const content = (
+    <>
+      {href ? (
+        <ExternalLink
+          size={12}
+          className="text-accent-green/60 transition-colors group-hover:text-accent-green/90"
+        />
+      ) : null}
+      <span className="font-mono text-xs text-code-green/80 transition-colors group-hover:text-code-green">
+        {children}
+      </span>
+    </>
+  );
+
+  if (!href) {
+    return <span className={cn(sharedClasses, "cursor-default")}>{content}</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(sharedClasses, "group hover:bg-accent-green/10")}
+    >
+      {content}
+    </a>
+  );
+}
+
+interface DataCardProps {
+  label: string;
+  state?: "default" | "active" | "locked";
+  onClick?: () => void;
+}
+
+export function DataCard({ label, state = "default", onClick }: DataCardProps) {
+  const baseClasses =
+    "flex w-full items-center justify-between rounded-md border px-3 py-2 text-left font-mono text-sm transition-all";
+
+  const states = {
+    default: "border-border-light bg-bg-panel text-text-main hover:bg-white/[0.04]",
+    active: "border-accent-green bg-accent-green/10 text-white",
+    locked: "cursor-not-allowed border-dashed border-border-dashed bg-transparent text-text-dim opacity-70",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={state !== "locked" ? onClick : undefined}
+      disabled={state === "locked"}
+      aria-pressed={state === "active"}
+      className={cn(baseClasses, states[state])}
+    >
+      <span className="truncate">{label}</span>
+      {state === "locked" ? <Lock size={12} className="ml-2 shrink-0" /> : null}
+    </button>
+  );
+}
+
+export function ColorSwatch({
+  colorClass,
+  hex,
+  label,
+}: {
+  colorClass: string;
+  hex: string;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={cn("h-16 w-full rounded-md border border-border-light shadow-inner", colorClass)} />
+      <div className="flex flex-col">
+        <span className="font-sans text-xs font-semibold text-text-main">{label}</span>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-text-dim">{hex}</span>
+      </div>
+    </div>
+  );
+}
+
+===== ./components/layout/BottomSheet.tsx =====
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+
+import { cn } from "@/lib/utils";
+
+interface BottomSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  showCloseButton?: boolean;
+  className?: string;
+  contentClassName?: string;
+}
+
+export function BottomSheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  showCloseButton = true,
+  className,
+  contentClassName,
+}: BottomSheetProps) {
+  const [mounted, setMounted] = useState(false);
+  const titleId = useId();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !isOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, mounted, onClose]);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen ? (
+        <>
+          <motion.button
+            type="button"
+            tabIndex={-1}
+            aria-label="Close panel overlay"
+            className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-[2px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            aria-label={title ? undefined : "Bottom sheet panel"}
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 260 }}
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-[80] mx-auto flex w-full max-w-4xl flex-col rounded-t-xl border border-b-0 border-border-light bg-bg-inspector shadow-[0_-10px_40px_rgba(0,0,0,0.5)]",
+              className,
+            )}
+          >
+            {(title || showCloseButton) && (
+              <div className="flex items-center justify-between px-6 pb-4 pt-6">
+                {title ? (
+                  <h3 id={titleId} className="font-serif text-2xl font-bold text-text-main">
+                    {title}
+                  </h3>
+                ) : (
+                  <div />
+                )}
+
+                {showCloseButton ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close panel"
+                    className="p-1 text-text-dim transition-colors hover:text-text-main"
+                  >
+                    <X size={20} strokeWidth={1.5} />
+                  </button>
+                ) : null}
+              </div>
+            )}
+
+            <div
+              className={cn(
+                "max-h-[70vh] overflow-y-auto px-6 pb-6 font-serif text-text-main",
+                contentClassName,
+              )}
+            >
+              {children}
+            </div>
+
+            {footer ? (
+              <div className="shrink-0 border-t border-border-light/70 px-6 py-4">{footer}</div>
+            ) : null}
+          </motion.div>
+        </>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+===== ./components/layout/Background.tsx =====
+export function Background() {
+  return (
+    <div aria-hidden="true">
+      <div className="fixed inset-0 -z-50 bg-bg-base" />
+
+      <div className="fixed inset-0 -z-40 overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-[-100%] animate-grid-shift opacity-40"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, var(--border-light) 1px, transparent 1px),
+              linear-gradient(to bottom, var(--border-light) 1px, transparent 1px)
+            `,
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,transparent_0%,var(--bg-base)_100%)]" />
+      </div>
+
+      <div
+        className="pointer-events-none fixed inset-0 z-50 h-full w-full opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")',
+        }}
+      />
+    </div>
+  );
+}
+
+===== ./components/layout/SectionNav.tsx =====
+"use client";
+
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+
+import { cn } from "@/lib/utils";
+
+const SECTIONS = [
+  { id: "overview", label: "Overview", number: "01" },
+  { id: "typography", label: "Typography", number: "02" },
+  { id: "colors", label: "Color Palette", number: "03" },
+  { id: "components", label: "Components", number: "04" },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]["id"];
+
+export function SectionNav() {
+  const [activeTab, setActiveTab] = useState<SectionId>(SECTIONS[0].id);
+  const isClickScrolling = useRef(false);
+  const targetSectionId = useRef<string | null>(null);
+  const releaseTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollEndTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateActiveFromScrollRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    const getSectionElements = () =>
+      SECTIONS.map((section) => document.getElementById(section.id)).filter(
+        (element): element is HTMLElement => element !== null,
+      );
+
+    const clearTimer = (timer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>) => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+    };
+
+    const releaseClickLock = () => {
+      isClickScrolling.current = false;
+      targetSectionId.current = null;
+      clearTimer(releaseTimeout);
+      clearTimer(scrollEndTimeout);
+    };
+
+    const updateActiveFromScroll = () => {
+      const sections = getSectionElements();
+
+      if (sections.length === 0) {
+        return;
+      }
+
+      const viewportAnchor = window.innerHeight * 0.4;
+
+      if (isClickScrolling.current && targetSectionId.current) {
+        const targetSection = document.getElementById(targetSectionId.current);
+
+        if (!targetSection) {
+          releaseClickLock();
+        } else {
+          const rect = targetSection.getBoundingClientRect();
+          const targetReached = rect.top <= viewportAnchor + 24 && rect.bottom >= viewportAnchor - 24;
+          const lastSectionId = SECTIONS[SECTIONS.length - 1]?.id;
+          const scrolledToBottom =
+            window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+
+          if (!targetReached && !(scrolledToBottom && targetSection.id === lastSectionId)) {
+            return;
+          }
+
+          releaseClickLock();
+        }
+      }
+
+      let nextActiveSectionId: SectionId = SECTIONS[0].id;
+      let closestDistance = Number.POSITIVE_INFINITY;
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        const distance =
+          rect.top <= viewportAnchor && rect.bottom >= viewportAnchor
+            ? 0
+            : Math.min(Math.abs(rect.top - viewportAnchor), Math.abs(rect.bottom - viewportAnchor));
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          nextActiveSectionId = section.id as SectionId;
+        }
+      }
+
+      setActiveTab((current) => (current === nextActiveSectionId ? current : nextActiveSectionId));
+    };
+
+    updateActiveFromScrollRef.current = updateActiveFromScroll;
+
+    const handleScroll = () => {
+      updateActiveFromScroll();
+
+      if (isClickScrolling.current) {
+        clearTimer(scrollEndTimeout);
+        scrollEndTimeout.current = setTimeout(() => {
+          releaseClickLock();
+          updateActiveFromScroll();
+        }, 120);
+      }
+    };
+
+    updateActiveFromScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", updateActiveFromScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateActiveFromScroll);
+      clearTimer(releaseTimeout);
+      clearTimer(scrollEndTimeout);
+    };
+  }, []);
+
+  const scrollTo = (id: SectionId) => {
+    const element = document.getElementById(id);
+
+    if (!element) {
+      return;
+    }
+
+    if (releaseTimeout.current) {
+      clearTimeout(releaseTimeout.current);
+    }
+
+    if (scrollEndTimeout.current) {
+      clearTimeout(scrollEndTimeout.current);
+    }
+
+    isClickScrolling.current = true;
+    targetSectionId.current = id;
+    setActiveTab(id);
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    releaseTimeout.current = setTimeout(() => {
+      isClickScrolling.current = false;
+      targetSectionId.current = null;
+      updateActiveFromScrollRef.current();
+    }, 2500);
+  };
+
+  return (
+    <nav className="fixed top-1/2 left-8 z-40 hidden -translate-y-1/2 xl:flex xl:flex-col">
+      <div className="flex w-64 flex-col gap-1 rounded-xl border border-border-light bg-white/[0.02] p-2 shadow-2xl backdrop-blur-md">
+        {SECTIONS.map((section) => {
+          const isActive = activeTab === section.id;
+
+          return (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => scrollTo(section.id)}
+              aria-current={isActive ? "page" : undefined}
+              className="relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-sans transition-colors"
+            >
+              {isActive ? (
+                <motion.div
+                  layoutId="active-nav"
+                  className="absolute inset-0 -z-10 rounded-md border border-accent-red/20 bg-accent-red/10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              ) : null}
+
+              <span
+                className={cn(
+                  "font-mono text-xs",
+                  isActive ? "text-accent-red" : "text-text-dim",
+                )}
+              >
+                {section.number}
+              </span>
+
+              <span
+                className={cn(
+                  "truncate",
+                  isActive ? "text-text-main" : "text-text-dim hover:text-white/70",
+                )}
+              >
+                {section.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+===== ./lib/utils.ts =====
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+===== ./next.config.ts =====
+import type { NextConfig } from "next";
+
+const securityHeaders = [
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "DENY",
+  },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+];
+
+const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+pranavgupta@hnt-08225 DitherTemplate % tree -L 5 -I node_modules
+.
+├── AGENTS.md
+├── app
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── CLAUDE.md
+├── components
+│   ├── layout
+│   │   ├── Background.tsx
+│   │   ├── BottomSheet.tsx
+│   │   └── SectionNav.tsx
+│   └── ui
+│       └── TacticalUI.tsx
+├── eslint.config.mjs
+├── lib
+│   └── utils.ts
+├── LICENSE
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+│   └── fonts
+│       ├── Glosa-W01-Black.ttf
+│       ├── SlipperyTrial-Bold.otf
+│       ├── SlipperyTrial-BoldItalic.otf
+│       ├── SlipperyTrial-Regular.otf
+│       └── SlipperyTrial-RegularItalic.otf
+├── README.md
+├── tailwind.config.ts
+└── tsconfig.json
+
+8 directories, 26 files
+pranavgupta@hnt-08225 DitherTemplate % 
