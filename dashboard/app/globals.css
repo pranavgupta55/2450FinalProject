@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #111110;
+  --bg-panel: rgba(255, 255, 255, 0.02);
+  --bg-inspector: #151412;
+  --accent-gold: #c4a052;
+  --accent-red: #ad544b;
+  --accent-green: #79a773;
+  --text-main: #e8e0d4;
+  --text-dim: #7a7873;
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-dashed: rgba(122, 120, 115, 0.35);
+  --color-code-text: #e8e0d4;
+  --color-code-green: #79a773;
+  --tree-blue: #7c9fb4;
+  --tree-green: #79a773;
+  --tree-yellow: #d1a556;
+  --tree-rust: #c17c5f;
+  --tree-purple: #9c7eb8;
+  --tree-grey: #8a857f;
+}
+
+@layer base {
+  * {
+    border-color: var(--border-light);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-main);
+    font-family: var(--font-slippery), sans-serif;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}

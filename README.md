@@ -1,6 +1,6 @@
 # 2450FinalProject
 
-Alpha prediction pipeline for CIS 2450.
+Alpha prediction pipeline for CIS 2450 with a standalone Next.js dashboard for browsing saved experiment artifacts.
 
 ## Current Workflow
 
@@ -12,10 +12,17 @@ Alpha prediction pipeline for CIS 2450.
 
 ## Useful Commands
 
-Install dependencies:
+Install Python dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Install dashboard dependencies:
+
+```bash
+cd dashboard
+npm install
 ```
 
 Prepare a train/test split from the small test dataset:
@@ -38,10 +45,13 @@ python scripts/train_xgboost.py --split-dir artifacts/splits/test_ds --dataset-n
 
 Note: on macOS, XGBoost may need `brew install libomp` before the first run.
 
-Launch the experiment dashboard:
+Launch the dashboard in development:
 
 ```bash
-streamlit run dashboard/app.py
+cd dashboard
+npm run dev
 ```
+
+The dashboard reads existing artifacts from `artifacts/experiments/` and does not modify the ML pipeline.
 
 More detailed design notes live in `docs/PROJECT_ARCHITECTURE.md`.
