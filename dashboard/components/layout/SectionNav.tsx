@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -162,10 +161,8 @@ export function SectionNav() {
               className="relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-sans transition-colors"
             >
               {isActive ? (
-                <motion.div
-                  layoutId="active-nav"
+                <div
                   className="absolute inset-0 -z-10 rounded-md border border-accent-red/20 bg-accent-red/10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               ) : null}
 

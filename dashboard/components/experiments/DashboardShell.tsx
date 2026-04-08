@@ -3,28 +3,16 @@
 import { useState } from "react";
 
 import { RunInspector } from "@/components/experiments/RunInspector";
+import {
+  ComparisonTable,
+  ConfusionMatrixChart,
+  CurveComparisonPanel,
+  FeatureImportanceChart,
+  MetricsGraph,
+  formatMetricValue,
+} from "@/components/experiments/Visuals";
 import { Badge, CodeLink, DataCard, Eyebrow } from "@/components/ui/TacticalUI";
-import type { DashboardData, ExperimentRun } from "@/lib/experiments";
-
-function formatMetricValue(value: string | number | boolean | null) {
-  if (typeof value === "number") {
-    if (Number.isInteger(value)) {
-      return value.toLocaleString();
-    }
-
-    return value.toFixed(4);
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-
-  if (value === null) {
-    return "null";
-  }
-
-  return value;
-}
+import type { DashboardData } from "@/lib/experiments";
 
 function formatTimestamp(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -83,65 +71,6 @@ function TablePanel({
           </table>
         </div>
       )}
-    </div>
-  );
-}
-
-function ComparisonTable({ runs }: { runs: ExperimentRun[] }) {
-  const metricKeys = Array.from(
-    new Set(runs.flatMap((run) => Object.keys(run.metrics))),
-  ).sort();
-
-  if (runs.length === 0 || metricKeys.length === 0) {
-    return (
-      <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
-        <Eyebrow title="Run Comparison" count="Metrics unavailable" />
-        <div className="py-8 text-center font-mono text-sm text-text-dim">
-          [ NO_COMPARISON_DATA ]
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
-      <Eyebrow title="Run Comparison" count={`${runs.length} runs indexed`} />
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-0 text-left">
-          <thead>
-            <tr>
-              <th className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim">
-                metric
-              </th>
-              {runs.map((run) => (
-                <th
-                  key={run.id}
-                  className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim"
-                >
-                  {run.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {metricKeys.map((metric) => (
-              <tr key={metric}>
-                <td className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main">
-                  {metric}
-                </td>
-                {runs.map((run) => (
-                  <td
-                    key={`${metric}-${run.id}`}
-                    className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main"
-                  >
-                    {formatMetricValue(run.metrics[metric] ?? null)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -298,40 +227,44 @@ export function DashboardShell({ data }: { data: DashboardData }) {
 
       <section id="metrics" className="scroll-mt-32 space-y-12">
         <Eyebrow title="Run Metrics" count={activeRun ? activeRun.label : "No run selected"} />
-        <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
-          {!activeRun ? (
-            <div className="py-8 text-center font-mono text-sm text-text-dim">
-              [ METRICS_OFFLINE ]
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim">
-                      metric
-                    </th>
-                    <th className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim">
-                      value
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(activeRun.metrics).map(([metric, value]) => (
-                    <tr key={metric}>
-                      <td className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main">
-                        {metric}
-                      </td>
-                      <td className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main">
-                        {formatMetricValue(value)}
-                      </td>
+        <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+            {!activeRun ? (
+              <div className="py-8 text-center font-mono text-sm text-text-dim">
+                [ METRICS_OFFLINE ]
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-0 text-left">
+                  <thead>
+                    <tr>
+                      <th className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                        metric
+                      </th>
+                      <th className="border-b border-border-light px-3 py-3 font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                        value
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {Object.entries(activeRun.metrics).map(([metric, value]) => (
+                      <tr key={metric}>
+                        <td className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main">
+                          {metric}
+                        </td>
+                        <td className="border-b border-border-light/40 px-3 py-3 font-mono text-xs text-text-main">
+                          {formatMetricValue(value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <ConfusionMatrixChart run={activeRun} />
         </div>
+        <CurveComparisonPanel runs={data.runs} />
       </section>
 
       <section id="predictions" className="scroll-mt-32 space-y-12">
@@ -365,6 +298,7 @@ export function DashboardShell({ data }: { data: DashboardData }) {
               : "No run selected"
           }
         />
+        <FeatureImportanceChart run={activeRun} />
         <TablePanel
           title="Importance"
           count={
@@ -380,6 +314,7 @@ export function DashboardShell({ data }: { data: DashboardData }) {
 
       <section id="comparison" className="scroll-mt-32 space-y-12">
         <Eyebrow title="Cross-Run View" count="Side-by-side metric matrix" />
+        <MetricsGraph runs={data.runs} />
         <ComparisonTable runs={data.runs} />
       </section>
 
