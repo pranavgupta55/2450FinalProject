@@ -9,7 +9,11 @@ import {
   CurveComparisonPanel,
   FeatureImportanceChart,
   MetricsGraph,
+  PortfolioWorthChart,
+  TradingComparisonChart,
+  formatCurrencyValue,
   formatMetricValue,
+  formatPercentValue,
 } from "@/components/experiments/Visuals";
 import { Badge, CodeLink, DataCard, Eyebrow } from "@/components/ui/TacticalUI";
 import type { DashboardData } from "@/lib/experiments";
@@ -209,6 +213,7 @@ export function DashboardShell({ data }: { data: DashboardData }) {
                   <div className="flex flex-wrap gap-3">
                     <CodeLink href="#metrics">OPEN_METRICS</CodeLink>
                     <CodeLink href="#predictions">OPEN_PREDICTIONS</CodeLink>
+                    <CodeLink href="#trading">OPEN_TRADING</CodeLink>
                     <CodeLink href="#importance">OPEN_IMPORTANCE</CodeLink>
                     <button
                       type="button"
@@ -286,6 +291,67 @@ export function DashboardShell({ data }: { data: DashboardData }) {
           columns={activeRun?.predictions.columns ?? []}
           rows={activeRun?.predictions.rows ?? []}
           emptyLabel="[ PREDICTION_PREVIEW_EMPTY ]"
+        />
+      </section>
+
+      <section id="trading" className="scroll-mt-32 space-y-12">
+        <Eyebrow
+          title="Mock Trading"
+          count={
+            activeRun
+              ? `${formatCurrencyValue(activeRun.tradingSummary.net_pnl_dollars ?? null)} net PnL`
+              : "No run selected"
+          }
+        />
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-border-light bg-bg-panel p-5 shadow-2xl">
+            <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+              Net PnL
+            </p>
+            <p className="mt-3 font-serif text-3xl text-text-main">
+              {formatCurrencyValue(activeRun?.tradingSummary.net_pnl_dollars ?? null)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border-light bg-bg-panel p-5 shadow-2xl">
+            <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+              Return On Capital
+            </p>
+            <p className="mt-3 font-serif text-3xl text-text-main">
+              {formatPercentValue(activeRun?.tradingSummary.return_on_traded_capital ?? null)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border-light bg-bg-panel p-5 shadow-2xl">
+            <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+              Trades Executed
+            </p>
+            <p className="mt-3 font-serif text-3xl text-text-main">
+              {formatMetricValue(activeRun?.tradingSummary.trades_executed ?? null)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border-light bg-bg-panel p-5 shadow-2xl">
+            <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+              Hit Rate
+            </p>
+            <p className="mt-3 font-serif text-3xl text-text-main">
+              {formatPercentValue(activeRun?.tradingSummary.hit_rate ?? null)}
+            </p>
+          </div>
+        </div>
+
+        <PortfolioWorthChart runs={data.runs} />
+        <TradingComparisonChart runs={data.runs} />
+
+        <TablePanel
+          title="Trade Log"
+          count={
+            activeRun
+              ? `${activeRun.tradeLog.rows.length} of ${activeRun.tradeLog.totalCount} rows`
+              : "Preview unavailable"
+          }
+          columns={activeRun?.tradeLog.columns ?? []}
+          rows={activeRun?.tradeLog.rows ?? []}
+          emptyLabel="[ TRADE_LOG_EMPTY ]"
         />
       </section>
 

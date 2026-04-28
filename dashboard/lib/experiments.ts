@@ -25,6 +25,14 @@ export interface CurvePoint {
   threshold: number;
 }
 
+export interface PortfolioPoint {
+  x: number;
+  date: string;
+  label: string;
+  portfolioValue: number;
+  periodReturn: number;
+}
+
 export interface FeatureImportanceDatum {
   feature: string;
   importance: number;
@@ -43,6 +51,7 @@ export interface ExperimentVisuals {
   rocCurve: CurvePoint[];
   prCurve: CurvePoint[];
   featureImportance: FeatureImportanceDatum[];
+  portfolioCurve: PortfolioPoint[];
 }
 
 export interface ExperimentRun {
@@ -55,6 +64,8 @@ export interface ExperimentRun {
   metadata: Record<string, JsonLike>;
   predictions: TablePreview;
   featureImportance: TablePreview;
+  tradeLog: TablePreview;
+  tradingSummary: Record<string, MetricValue>;
   visuals: ExperimentVisuals;
 }
 
@@ -63,17 +74,30 @@ export interface DashboardData {
   runs: ExperimentRun[];
 }
 
+interface LoadDashboardDataOptions {
+  datasetName?: string;
+}
+
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 const EXPERIMENT_ROOT = path.join(REPO_ROOT, "artifacts", "experiments");
 const PREDICTION_PREVIEW_ROWS = 50;
 const FEATURE_PREVIEW_ROWS = 25;
+const TRADE_PREVIEW_ROWS = 50;
 const FEATURE_CHART_ROWS = 12;
+const PORTFOLIO_STARTING_CAPITAL = 100;
 
 type CsvRow = Record<string, string>;
 
 interface PredictionRow {
   actualLabel: number;
   predictedProbability: number;
+}
+
+interface TradeObservation {
+  period: string;
+  sortValue: number;
+  returnContribution: number;
+  active: boolean;
 }
 
 async function exists(targetPath: string) {
@@ -129,6 +153,17 @@ function toNumber(value: unknown): number | null {
 }
 
 function buildConfusionMatrix(metrics: Record<string, MetricValue>): ConfusionMatrixCell[] {
+  const confusionKeys = [
+    "true_negatives",
+    "false_positives",
+    "false_negatives",
+    "true_positives",
+  ] as const;
+  const hasConfusionData = confusionKeys.some((key) => toNumber(metrics[key]) !== null);
+  if (!hasConfusionData) {
+    return [];
+  }
+
   return [
     {
       id: "true_negatives",
@@ -259,17 +294,141 @@ function buildCurvePoints(rows: PredictionRow[]) {
   return { rocCurve, prCurve };
 }
 
+function parseTradeObservation(row: CsvRow): TradeObservation | null {
+  const weekStart = row.week_start;
+  if (weekStart) {
+    const realizedAlpha = toNumber(row.realized_alpha);
+    const position = toNumber(row.trade_position) ?? 0;
+    const tradeTaken = (toNumber(row.trade_taken) ?? (position !== 0 ? 1 : 0)) !== 0;
+    const sortValue = Date.parse(weekStart);
+
+    if (realizedAlpha === null || Number.isNaN(sortValue)) {
+      return null;
+    }
+
+    return {
+      period: weekStart,
+      sortValue,
+      returnContribution: tradeTaken ? position * realizedAlpha : 0,
+      active: tradeTaken,
+    };
+  }
+
+  const benchmarkDate = row.Date ?? row.date;
+  const benchmarkReturn = toNumber(row.sp_return_1d ?? row.daily_return ?? row.market_return);
+  const position = toNumber(row.position ?? row.trade_position) ?? 1;
+  const tradeTaken = (toNumber(row.trade_taken) ?? 1) !== 0;
+  const sortValue = benchmarkDate ? Date.parse(benchmarkDate) : Number.NaN;
+
+  if (!benchmarkDate || benchmarkReturn === null || Number.isNaN(sortValue)) {
+    return null;
+  }
+
+  return {
+    period: benchmarkDate,
+    sortValue,
+    returnContribution: tradeTaken ? position * benchmarkReturn : 0,
+    active: tradeTaken,
+  };
+}
+
+function groupTradeObservations(rows: CsvRow[]) {
+  const grouped = new Map<
+    string,
+    {
+      period: string;
+      sortValue: number;
+      activeCount: number;
+      returnSum: number;
+    }
+  >();
+
+  rows
+    .map(parseTradeObservation)
+    .filter((observation): observation is TradeObservation => observation !== null)
+    .forEach((observation) => {
+      const current = grouped.get(observation.period) ?? {
+        period: observation.period,
+        sortValue: observation.sortValue,
+        activeCount: 0,
+        returnSum: 0,
+      };
+      current.activeCount += observation.active ? 1 : 0;
+      current.returnSum += observation.returnContribution;
+      grouped.set(observation.period, current);
+    });
+
+  return Array.from(grouped.values()).sort((left, right) => left.sortValue - right.sortValue);
+}
+
+function buildPortfolioCurve(
+  rows: CsvRow[],
+  startingCapital: number = PORTFOLIO_STARTING_CAPITAL,
+): PortfolioPoint[] {
+  const orderedPeriods = groupTradeObservations(rows);
+  if (orderedPeriods.length === 0) {
+    return [];
+  }
+
+  let portfolioValue = startingCapital;
+  const points: PortfolioPoint[] = [
+    {
+      x: 0,
+      date: orderedPeriods[0].period,
+      label: orderedPeriods[0].period,
+      portfolioValue: startingCapital,
+      periodReturn: 0,
+    },
+  ];
+
+  orderedPeriods.forEach((period, index) => {
+    const periodReturn =
+      period.activeCount > 0 ? period.returnSum / period.activeCount : 0;
+    portfolioValue *= 1 + periodReturn;
+    points.push({
+      x: (index + 1) / orderedPeriods.length,
+      date: period.period,
+      label: period.period,
+      portfolioValue: Number(portfolioValue.toFixed(4)),
+      periodReturn,
+    });
+  });
+
+  return points;
+}
+
+async function listRunDirectories(modelPath: string, datasetNameFilter: string | null) {
+  const datasetEntries = await fs.readdir(modelPath, { withFileTypes: true });
+  return datasetEntries
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => !datasetNameFilter || entry.name === datasetNameFilter)
+    .map((entry) => ({
+      datasetName: entry.name,
+      runPath: path.join(modelPath, entry.name),
+    }));
+}
+
 async function loadRun(modelName: string, datasetName: string, runPath: string) {
   const metricsPath = path.join(runPath, "metrics.json");
   if (!(await exists(metricsPath))) {
     return null;
   }
 
-  const [metrics, metadata, predictionRows, featureImportanceRows, stats] = await Promise.all([
+  const [
+    metrics,
+    metadata,
+    predictionRows,
+    featureImportanceRows,
+    tradingSummary,
+    tradeLogRows,
+    stats,
+  ] = await Promise.all([
     readJsonFile<Record<string, MetricValue>>(metricsPath, {}),
     readJsonFile<Record<string, JsonLike>>(path.join(runPath, "metadata.json"), {}),
     readCsvRows(path.join(runPath, "predictions.csv")),
     readCsvRows(path.join(runPath, "feature_importance.csv")),
+    readJsonFile<Record<string, MetricValue>>(path.join(runPath, "trading_summary.json"), {}),
+    readCsvRows(path.join(runPath, "trade_log.csv")),
     fs.stat(metricsPath),
   ]);
 
@@ -279,6 +438,7 @@ async function loadRun(modelName: string, datasetName: string, runPath: string) 
       : "label_abs_alpha_gt_1pct";
   const predictionSeries = buildPredictionRows(predictionRows, labelColumn);
   const { rocCurve, prCurve } = buildCurvePoints(predictionSeries);
+  const portfolioCurve = buildPortfolioCurve(tradeLogRows);
 
   return {
     id: `${modelName}/${datasetName}`,
@@ -290,55 +450,55 @@ async function loadRun(modelName: string, datasetName: string, runPath: string) 
     metadata,
     predictions: buildTablePreview(predictionRows, PREDICTION_PREVIEW_ROWS),
     featureImportance: buildTablePreview(featureImportanceRows, FEATURE_PREVIEW_ROWS),
+    tradeLog: buildTablePreview(tradeLogRows, TRADE_PREVIEW_ROWS),
+    tradingSummary,
     visuals: {
       confusionMatrix: buildConfusionMatrix(metrics),
       rocCurve,
       prCurve,
       featureImportance: buildFeatureImportance(featureImportanceRows),
+      portfolioCurve,
     },
   } satisfies ExperimentRun;
 }
 
-export async function loadDashboardData(): Promise<DashboardData> {
+export async function loadDashboardData(
+  options: LoadDashboardDataOptions = {},
+): Promise<DashboardData> {
+  const datasetNameFilter = options.datasetName?.trim() || null;
   if (!(await exists(EXPERIMENT_ROOT))) {
     return {
-      artifactRoot: "artifacts/experiments",
+      artifactRoot: datasetNameFilter
+        ? `artifacts/experiments/*/${datasetNameFilter}`
+        : "artifacts/experiments",
       runs: [],
     };
   }
 
   const modelEntries = await fs.readdir(EXPERIMENT_ROOT, { withFileTypes: true });
-  const runs: ExperimentRun[] = [];
+  const runsByModel = await Promise.all(
+    modelEntries
+      .filter((entry) => entry.isDirectory())
+      .map(async (modelEntry) => {
+        const modelPath = path.join(EXPERIMENT_ROOT, modelEntry.name);
+        const runDirectories = await listRunDirectories(modelPath, datasetNameFilter);
+        const loadedRuns = await Promise.all(
+          runDirectories.map(({ datasetName, runPath }) =>
+            loadRun(modelEntry.name, datasetName, runPath),
+          ),
+        );
+        return loadedRuns.filter((run): run is ExperimentRun => run !== null);
+      }),
+  );
 
-  for (const modelEntry of modelEntries) {
-    if (!modelEntry.isDirectory()) {
-      continue;
-    }
-
-    const modelPath = path.join(EXPERIMENT_ROOT, modelEntry.name);
-    const datasetEntries = await fs.readdir(modelPath, { withFileTypes: true });
-
-    for (const datasetEntry of datasetEntries) {
-      if (!datasetEntry.isDirectory()) {
-        continue;
-      }
-
-      const run = await loadRun(
-        modelEntry.name,
-        datasetEntry.name,
-        path.join(modelPath, datasetEntry.name),
-      );
-
-      if (run) {
-        runs.push(run);
-      }
-    }
-  }
+  const runs = runsByModel.flat();
 
   runs.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   return {
-    artifactRoot: "artifacts/experiments",
+    artifactRoot: datasetNameFilter
+      ? `artifacts/experiments/*/${datasetNameFilter}`
+      : "artifacts/experiments",
     runs,
   };
 }

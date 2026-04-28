@@ -22,18 +22,20 @@ def parse_args():
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
     parser.add_argument("--use-smote", action="store_true")
+    parser.add_argument("--capital-per-trade", type=float, default=10_000.0)
+    parser.add_argument("--alpha-trade-threshold", type=float, default=0.0)
     return parser.parse_args()
 
 
 def build_model(random_state: int):
     try:
-        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
     except ImportError as exc:
         raise SystemExit(
             "scikit-learn is required. Run `pip install -r requirements.txt` first."
         ) from exc
 
-    return RandomForestClassifier(
+    classifier = RandomForestClassifier(
         n_estimators=400,
         max_depth=8,
         min_samples_leaf=4,
@@ -41,6 +43,14 @@ def build_model(random_state: int):
         random_state=random_state,
         n_jobs=-1,
     )
+    alpha_regressor = RandomForestRegressor(
+        n_estimators=400,
+        max_depth=8,
+        min_samples_leaf=4,
+        random_state=random_state,
+        n_jobs=-1,
+    )
+    return classifier, alpha_regressor
 
 
 def main():
@@ -52,7 +62,7 @@ def main():
         else DEFAULT_ARTIFACT_DIR / "experiments" / "random_forest" / args.dataset_name
     )
 
-    model = build_model(args.random_state)
+    model, alpha_regressor = build_model(args.random_state)
     results = train_and_evaluate_model(
         model=model,
         model_name="random_forest",
@@ -65,6 +75,9 @@ def main():
         use_smote=args.use_smote,
         random_state=args.random_state,
         extra_metadata={"split_metadata": split_metadata},
+        alpha_regressor=alpha_regressor,
+        capital_per_trade=args.capital_per_trade,
+        alpha_trade_threshold=args.alpha_trade_threshold,
     )
 
     print(f"Saved Random Forest artifacts to: {output_dir}")

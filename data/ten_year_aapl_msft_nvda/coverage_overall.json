@@ -1,0 +1,15 @@
+{
+  "date_generated": "2026-04-09T00:36:40.076203",
+  "num_tickers": 3,
+  "date_range": {
+    "start": "2016-04-11",
+    "end": "2026-04-09"
+  },
+  "prices_raw_rows": 7539,
+  "price_feature_rows": 7539,
+  "sec_filings_meta_rows": 230,
+  "sec_filings_text_rows": 230,
+  "finnhub_news_rows": 730,
+  "yahoo_news_rows": 0,
+  "weekly_event_rows": 1569
+}

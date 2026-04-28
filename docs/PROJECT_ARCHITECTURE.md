@@ -1,6 +1,6 @@
 # Project Architecture
 
-This repository is organized as a lightweight experimentation stack for predicting significant absolute alpha events.
+This repository is organized as a lightweight experimentation stack for predicting significant absolute alpha events and simulating how those model outputs would behave in a simple mock trader.
 
 ## Goal
 
@@ -15,6 +15,12 @@ The current structured dataset comes from `data/*/weekly_event_dataset.csv`. Eac
 - Finnhub news counts
 - Yahoo Finance RSS fallback counts
 - future alpha label
+
+In the current repository, each weekly row can also be joined back to:
+
+- raw SEC 8-K filing text
+- Finnhub weekly headline and summary text
+- Yahoo RSS fallback headline text
 
 ## Split Strategy
 
@@ -45,9 +51,15 @@ This is safer than a random row split because the target is based on future retu
 - `src/alpha_signal/features/tabular.py`
   Fits train-only imputations and categorical encodings for tabular models.
 - `src/alpha_signal/models/training.py`
-  Runs a common train/evaluate/save workflow for model experiments.
+  Runs a common tabular train/evaluate/save workflow for model experiments.
 - `src/alpha_signal/evaluation/metrics.py`
-  Computes F1, precision, recall, ROC-AUC, PR-AUC, and confusion counts.
+  Computes F1, precision, recall, ROC-AUC, PR-AUC, confusion counts, and alpha regression metrics.
+- `src/alpha_signal/evaluation/trading.py`
+  Simulates a simple long/short trader using model alpha scores.
+- `src/alpha_signal/data/multimodal.py`
+  Rebuilds weekly text bundles from SEC filing text and news tables.
+- `src/alpha_signal/models/multimodal_attention.py`
+  Defines the FinBERT + self-attention multimodal fusion model.
 
 ## Model Roadmap
 
@@ -58,15 +70,19 @@ This is safer than a random row split because the target is based on future retu
 - `XGBoost`
   Stronger boosted-tree baseline over the same structured features
   Note: on macOS, the local runtime may require `libomp` for XGBoost to load.
+- `Random Baseline`
+  Uniform random classification scores and random alpha guesses for a floor comparison
+- `FinBERT Multimodal Attention`
+  FinBERT text encoder plus self-attention fusion over text, market, event, temporal, and ticker tokens
+- `S&P 500 Buy And Hold`
+  A benchmark artifact that simulates buying `^GSPC` at the start of the test window and holding to the latest available date
 
 ### Planned Next
 
 - `Logistic Regression`
   Technical-only baseline for comparison against tree models
 - `FinBERT + Similarity Features`
-  Event embeddings and nearest-neighbor signal features
-- `Multimodal Attention Model`
-  Joint numerical + embedding model
+  Event embeddings and nearest-neighbor signal features beyond the current weekly-text bundle
 
 ## Dashboard Plan
 
@@ -76,14 +92,15 @@ The dashboard will read from `artifacts/experiments/` and show:
 - per-model metrics
 - prediction samples
 - feature importances
+- mock-trading summaries and trade logs
 - side-by-side experiment comparisons
 
-The placeholder dashboard is already wired to this artifact layout.
+The dashboard is implemented in `dashboard/` as a Next.js app and reads the artifact directory directly.
 
 ## Recommended Workflow
 
 1. Generate or refresh a dataset in `data/<dataset_name>/`
 2. Run `scripts/prepare_train_test_split.py`
 3. Train one or more models from `scripts/`
-4. Review metrics in `artifacts/experiments/`
-5. Open `dashboard/app.py` with Streamlit
+4. Review metrics and mock-trading outputs in `artifacts/experiments/`
+5. Open the Next.js dashboard with `cd dashboard && npm run dev`

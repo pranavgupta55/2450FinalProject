@@ -58,6 +58,32 @@ export function formatMetricValue(value: MetricValue) {
   return value;
 }
 
+function toNumericMetric(value: MetricValue) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function formatCurrencyValue(value: MetricValue) {
+  const numericValue = toNumericMetric(value);
+  if (numericValue === null) {
+    return "n/a";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numericValue);
+}
+
+export function formatPercentValue(value: MetricValue) {
+  const numericValue = toNumericMetric(value);
+  if (numericValue === null) {
+    return "n/a";
+  }
+
+  return `${(numericValue * 100).toFixed(2)}%`;
+}
+
 function formatMetricLabel(metric: string) {
   if (metric === "f1") {
     return "F1";
@@ -124,6 +150,72 @@ function renderGridLines() {
           stroke="rgba(255,255,255,0.08)"
           strokeDasharray="3 6"
         />
+      </g>
+    );
+  });
+}
+
+function buildValueLinePath(
+  points: ExperimentRun["visuals"]["portfolioCurve"],
+  minValue: number,
+  maxValue: number,
+) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  const drawableWidth = CHART_WIDTH - CHART_PADDING * 2;
+  const drawableHeight = CHART_HEIGHT - CHART_PADDING * 2;
+  const range = Math.max(maxValue - minValue, 1);
+
+  return points
+    .map((point, index) => {
+      const x = CHART_PADDING + point.x * drawableWidth;
+      const normalizedY = (point.portfolioValue - minValue) / range;
+      const y = CHART_HEIGHT - CHART_PADDING - normalizedY * drawableHeight;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function renderValueGridLines(minValue: number, maxValue: number) {
+  const marks = [0, 0.25, 0.5, 0.75, 1];
+  const drawableWidth = CHART_WIDTH - CHART_PADDING * 2;
+  const drawableHeight = CHART_HEIGHT - CHART_PADDING * 2;
+  const range = Math.max(maxValue - minValue, 1);
+
+  return marks.map((mark) => {
+    const x = CHART_PADDING + mark * drawableWidth;
+    const y = CHART_HEIGHT - CHART_PADDING - mark * drawableHeight;
+    const labelValue = minValue + mark * range;
+
+    return (
+      <g key={`value-grid-${mark}`}>
+        <line
+          x1={CHART_PADDING}
+          y1={y}
+          x2={CHART_WIDTH - CHART_PADDING}
+          y2={y}
+          stroke="rgba(255,255,255,0.08)"
+          strokeDasharray="3 6"
+        />
+        <line
+          x1={x}
+          y1={CHART_PADDING}
+          x2={x}
+          y2={CHART_HEIGHT - CHART_PADDING}
+          stroke="rgba(255,255,255,0.08)"
+          strokeDasharray="3 6"
+        />
+        <text
+          x={CHART_PADDING - 6}
+          y={y + 4}
+          textAnchor="end"
+          fill="#7A7873"
+          fontSize="9"
+        >
+          {labelValue.toFixed(0)}
+        </text>
       </g>
     );
   });
@@ -444,6 +536,165 @@ export function CurveComparisonPanel({ runs }: { runs: ExperimentRun[] }) {
   );
 }
 
+export function PortfolioWorthChart({ runs }: { runs: ExperimentRun[] }) {
+  const portfolioRuns = runs.filter(
+    (run) => run.visuals.portfolioCurve.length > 1,
+  );
+
+  if (portfolioRuns.length === 0) {
+    return (
+      <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+        <Eyebrow title="Portfolio Worth" count="Model trade curves unavailable" />
+        <div className="py-8 text-center font-mono text-sm text-text-dim">
+          [ PORTFOLIO_CURVE_OFFLINE ]
+        </div>
+      </div>
+    );
+  }
+
+  const allValues = portfolioRuns.flatMap((run) =>
+    run.visuals.portfolioCurve.map((point) => point.portfolioValue),
+  );
+  const minValue = Math.min(...allValues);
+  const maxValue = Math.max(...allValues);
+  const padding = Math.max((maxValue - minValue) * 0.08, 4);
+  const chartMin = Math.max(0, minValue - padding);
+  const chartMax = maxValue + padding;
+
+  const dateValues = portfolioRuns.flatMap((run) => {
+    const firstPoint = run.visuals.portfolioCurve[0];
+    const lastPoint = run.visuals.portfolioCurve[run.visuals.portfolioCurve.length - 1];
+    return [firstPoint?.date, lastPoint?.date].filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
+  });
+  const sortedDates = [...dateValues].sort();
+  const startDate = sortedDates[0] ?? "";
+  const endDate = sortedDates[sortedDates.length - 1] ?? "";
+
+  return (
+    <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+        <Eyebrow
+          title="Portfolio Worth"
+          count={`${portfolioRuns.length} strategy curves from $100 starting capital`}
+        />
+
+      <div className="mb-8 flex flex-wrap gap-3">
+        {portfolioRuns.map((run, index) => (
+          <div
+            key={run.id}
+            className="inline-flex items-center gap-2 rounded-full border border-border-light bg-bg-base px-3 py-1"
+          >
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${RUN_COLOR_CLASSES[index % RUN_COLOR_CLASSES.length]}`}
+            />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-main">
+              {run.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-auto w-full">
+        <rect
+          x={CHART_PADDING}
+          y={CHART_PADDING}
+          width={CHART_WIDTH - CHART_PADDING * 2}
+          height={CHART_HEIGHT - CHART_PADDING * 2}
+          fill="#151412"
+          stroke="rgba(255,255,255,0.08)"
+        />
+
+        {renderValueGridLines(chartMin, chartMax)}
+
+        {portfolioRuns.map((run, index) => {
+          const points = run.visuals.portfolioCurve;
+          const path = buildValueLinePath(points, chartMin, chartMax);
+          const lastPoint = points[points.length - 1];
+          const drawableWidth = CHART_WIDTH - CHART_PADDING * 2;
+          const drawableHeight = CHART_HEIGHT - CHART_PADDING * 2;
+          const normalizedY =
+            (lastPoint.portfolioValue - chartMin) / Math.max(chartMax - chartMin, 1);
+          const circleX = CHART_PADDING + lastPoint.x * drawableWidth;
+          const circleY = CHART_HEIGHT - CHART_PADDING - normalizedY * drawableHeight;
+
+          return (
+            <g key={`portfolio-${run.id}`}>
+              <path
+                d={path}
+                fill="none"
+                stroke={RUN_COLORS[index % RUN_COLORS.length]}
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <circle
+                cx={circleX}
+                cy={circleY}
+                r="4"
+                fill={RUN_COLORS[index % RUN_COLORS.length]}
+                stroke="#151412"
+                strokeWidth="2"
+              />
+            </g>
+          );
+        })}
+
+        <text
+          x={CHART_WIDTH / 2}
+          y={CHART_HEIGHT - 4}
+          textAnchor="middle"
+          fill="#7A7873"
+          fontSize="10"
+          style={{ letterSpacing: "0.18em", textTransform: "uppercase" }}
+        >
+          {startDate && endDate ? `${startDate} to ${endDate}` : "Backtest Window"}
+        </text>
+        <text
+          x={14}
+          y={CHART_HEIGHT / 2}
+          textAnchor="middle"
+          fill="#7A7873"
+          fontSize="10"
+          transform={`rotate(-90 14 ${CHART_HEIGHT / 2})`}
+          style={{ letterSpacing: "0.18em", textTransform: "uppercase" }}
+        >
+          Portfolio Value
+        </text>
+      </svg>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {portfolioRuns.map((run, index) => {
+          const endValue = run.visuals.portfolioCurve[run.visuals.portfolioCurve.length - 1]?.portfolioValue ?? 100;
+          const totalReturn = endValue / 100 - 1;
+
+          return (
+            <div
+              key={`${run.id}-summary`}
+              className="rounded-xl border border-border-light/50 bg-bg-base p-4"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${RUN_COLOR_CLASSES[index % RUN_COLOR_CLASSES.length]}`}
+                />
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-main">
+                  {run.modelName}
+                </p>
+              </div>
+              <p className="mt-3 font-serif text-3xl text-text-main">
+                {formatCurrencyValue(endValue)}
+              </p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                {formatPercentValue(totalReturn)} total return
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function FeatureImportanceChart({ run }: { run: ExperimentRun | null }) {
   const rows = run?.visuals.featureImportance ?? [];
 
@@ -551,6 +802,82 @@ export function ComparisonTable({ runs }: { runs: ExperimentRun[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+export function TradingComparisonChart({ runs }: { runs: ExperimentRun[] }) {
+  const tradingRuns = runs
+    .map((run) => ({
+      run,
+      netPnl: toNumericMetric(run.tradingSummary.net_pnl_dollars ?? null),
+      totalReturn: toNumericMetric(run.tradingSummary.return_on_traded_capital ?? null),
+      trades: toNumericMetric(run.tradingSummary.trades_executed ?? null),
+    }))
+    .filter((item) => item.netPnl !== null);
+
+  if (tradingRuns.length === 0) {
+    return (
+      <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+        <Eyebrow title="Trading Comparison" count="Trading artifacts unavailable" />
+        <div className="py-8 text-center font-mono text-sm text-text-dim">
+          [ TRADING_COMPARISON_OFFLINE ]
+        </div>
+      </div>
+    );
+  }
+
+  const maxAbsPnl = Math.max(
+    ...tradingRuns.map((item) => Math.abs(item.netPnl ?? 0)),
+    1,
+  );
+
+  return (
+    <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+      <Eyebrow title="Trading Comparison" count={`${tradingRuns.length} run PnL scan`} />
+      <div className="space-y-4">
+        {tradingRuns.map((item, index) => {
+          const width = `${(Math.abs(item.netPnl ?? 0) / maxAbsPnl) * 100}%`;
+          const isPositive = (item.netPnl ?? 0) >= 0;
+          const colorClass = isPositive
+            ? RUN_COLOR_CLASSES[index % RUN_COLOR_CLASSES.length]
+            : "bg-accent-red";
+
+          return (
+            <div
+              key={item.run.id}
+              className="grid gap-3 md:grid-cols-[220px_1fr_160px] md:items-center"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-mono text-[10px] uppercase tracking-widest text-text-main">
+                  {item.run.label}
+                </p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                  {item.trades ?? 0} trades
+                </p>
+              </div>
+
+              <div className="relative h-4 overflow-hidden rounded-full border border-border-light bg-bg-base">
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-full ${colorClass}`}
+                  style={{ width }}
+                />
+              </div>
+
+              <div className="text-right">
+                <p
+                  className={`font-mono text-xs ${isPositive ? "text-accent-green" : "text-accent-red"}`}
+                >
+                  {formatCurrencyValue(item.netPnl)}
+                </p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                  {formatPercentValue(item.totalReturn)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

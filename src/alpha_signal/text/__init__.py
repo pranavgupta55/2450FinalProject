@@ -1,1 +1,1 @@
-"""FinBERT and vector feature placeholders."""
+"""FinBERT text encoding helpers for multimodal experiments."""

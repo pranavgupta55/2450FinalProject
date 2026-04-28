@@ -1,1 +1,1 @@
-"""Model training helpers and future model placeholders."""
+"""Model training helpers, tabular baselines, and multimodal architectures."""

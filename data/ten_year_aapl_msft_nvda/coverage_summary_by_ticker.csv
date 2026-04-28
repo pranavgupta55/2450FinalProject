@@ -1,0 +1,4 @@
+ticker,price_rows,sec_events,finnhub_news,yahoo_news
+AAPL,2513,105,239,0
+MSFT,2513,65,241,0
+NVDA,2513,60,250,0
