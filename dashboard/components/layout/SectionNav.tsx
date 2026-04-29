@@ -10,8 +10,9 @@ const SECTIONS = [
   { id: "runs", label: "Run Index", number: "02" },
   { id: "metrics", label: "Metrics", number: "03" },
   { id: "predictions", label: "Predictions", number: "04" },
-  { id: "importance", label: "Importance", number: "05" },
-  { id: "comparison", label: "Comparison", number: "06" },
+  { id: "trading", label: "Trading", number: "05" },
+  { id: "importance", label: "Importance", number: "06" },
+  { id: "comparison", label: "Comparison", number: "07" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];

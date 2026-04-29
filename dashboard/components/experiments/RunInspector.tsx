@@ -1,5 +1,6 @@
 import { Badge, CodeLink } from "@/components/ui/TacticalUI";
 import { BottomSheet } from "@/components/layout/BottomSheet";
+import { formatCurrencyValue, formatPercentValue } from "@/components/experiments/Visuals";
 import type { ExperimentRun } from "@/lib/experiments";
 
 interface RunInspectorProps {
@@ -53,11 +54,36 @@ export function RunInspector({ run, isOpen, onClose }: RunInspectorProps) {
                 {run.featureImportance.totalCount}
               </p>
             </div>
+            <div className="rounded-xl border border-border-light bg-bg-panel p-4">
+              <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                Net PnL
+              </p>
+              <p className="mt-3 font-serif text-3xl text-text-main">
+                {formatCurrencyValue(run.tradingSummary.net_pnl_dollars ?? null)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-light bg-bg-panel p-4">
+              <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                Trade Return
+              </p>
+              <p className="mt-3 font-serif text-3xl text-text-main">
+                {formatPercentValue(run.tradingSummary.return_on_traded_capital ?? null)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-light bg-bg-panel p-4">
+              <p className="font-sans text-[10px] uppercase tracking-widest text-text-dim">
+                Trades Executed
+              </p>
+              <p className="mt-3 font-serif text-3xl text-text-main">
+                {run.tradingSummary.trades_executed ?? 0}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <CodeLink href="#metrics">OPEN_METRICS</CodeLink>
             <CodeLink href="#predictions">OPEN_PREDICTIONS</CodeLink>
+            <CodeLink href="#trading">OPEN_TRADING</CodeLink>
             <CodeLink href="#importance">OPEN_IMPORTANCE</CodeLink>
             <CodeLink href="#comparison">OPEN_COMPARISON</CodeLink>
           </div>
