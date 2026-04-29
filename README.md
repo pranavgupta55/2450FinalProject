@@ -107,4 +107,4 @@ Important files per run:
 - `trade_log.csv`
 - `model.pkl` or `model.pt`
 
-More detailed design notes live in `docs/PROJECT_ARCHITECTURE.md`.
+More detailed design notes in `docs/PROJECT_ARCHITECTURE.md`.
