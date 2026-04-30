@@ -22,15 +22,24 @@ def parse_args():
     parser.add_argument("--outdir", type=str, default=str(DEFAULT_OUTDIR))
     parser.add_argument("--years", type=int, default=2)
     parser.add_argument("--max-tickers", type=int, default=500)
-    parser.add_argument("--price-workers", type=int, default=8)
-    parser.add_argument("--sec-workers", type=int, default=4)
+    parser.add_argument("--price-workers", type=int, default=16)
+    parser.add_argument("--sec-workers", type=int, default=32)
     parser.add_argument(
         "--news-workers",
         type=int,
-        default=2,
+        default=16,
         help="Lower this to 1 if Yahoo RSS starts returning 429 rate-limit warnings.",
     )
-    parser.add_argument("--max-sec-text-chars", type=int, default=20_000)
+    parser.add_argument("--max-sec-text-chars", type=int, default=8_000)
+    parser.add_argument(
+        "--max-sec-filings-per-ticker",
+        type=int,
+        default=4,
+        help=(
+            "Date-filtered cap on SEC 8-K text downloads per ticker. Default 4 "
+            "keeps the quarterly dataset much faster than fetching every 8-K."
+        ),
+    )
     parser.add_argument("--max-quarterly-text-chars", type=int, default=50_000)
     parser.add_argument("--finnhub-key", type=str, default=None)
     parser.add_argument("--sec-user-agent", type=str, default=None)
@@ -65,6 +74,8 @@ def main():
         str(args.news_workers),
         "--max-sec-text-chars",
         str(args.max_sec_text_chars),
+        "--max-sec-filings-per-ticker",
+        str(args.max_sec_filings_per_ticker),
         "--max-weekly-text-chars",
         str(args.max_quarterly_text_chars),
     ]
@@ -85,6 +96,11 @@ def main():
     print(f"  {Path(args.outdir) / 'weekly_event_dataset.csv'}  # compatibility alias")
     print(f"  {Path(args.outdir) / 'coverage_overall.json'}")
     print("\nExpected modeling rows: roughly 500 stocks x 8 quarters = about 4,000 rows.")
+    print(
+        "SEC text is intentionally capped at "
+        f"{args.max_sec_filings_per_ticker} filing(s) per ticker and "
+        f"{args.max_sec_text_chars} characters per filing."
+    )
 
 
 if __name__ == "__main__":

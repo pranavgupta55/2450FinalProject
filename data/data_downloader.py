@@ -401,6 +401,9 @@ def fetch_sec_8k_filings_for_ticker(
     ticker: str,
     cik_map: dict[str, str],
     user_agent: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    max_filings: int | None = None,
 ) -> list[dict]:
     sec_ticker = normalize_ticker_for_sec_lookup(ticker).upper()
     cik = cik_map.get(sec_ticker)
@@ -421,10 +424,19 @@ def fetch_sec_8k_filings_for_ticker(
         dates = recent.get("filingDate", [])
         accessions = recent.get("accessionNumber", [])
         primary_docs = recent.get("primaryDocument", [])
+        start_ts = pd.to_datetime(start_date) if start_date else None
+        end_ts = pd.to_datetime(end_date) if end_date else None
 
         rows = []
         for form, filing_date, accession, primary_doc in zip(forms, dates, accessions, primary_docs):
             if form != "8-K":
+                continue
+            filing_ts = pd.to_datetime(filing_date, errors="coerce")
+            if pd.isna(filing_ts):
+                continue
+            if start_ts is not None and filing_ts < start_ts:
+                continue
+            if end_ts is not None and filing_ts > end_ts:
                 continue
 
             accession_nodashes = accession.replace("-", "")
@@ -444,6 +456,9 @@ def fetch_sec_8k_filings_for_ticker(
                     "filing_url": filing_url,
                 }
             )
+        rows = sorted(rows, key=lambda row: row["filing_date"], reverse=True)
+        if max_filings is not None and max_filings > 0:
+            rows = rows[:max_filings]
         return rows
     except Exception as e:
         print(f"[WARN] Failed parsing SEC data for {ticker}: {e}")
@@ -865,6 +880,9 @@ def run_pipeline(args) -> None:
                 ticker,
                 cik_map,
                 args.sec_user_agent,
+                start_date=start,
+                end_date=end,
+                max_filings=args.max_sec_filings_per_ticker,
             ),
             "SEC metadata",
             args.sec_workers,
@@ -1010,6 +1028,7 @@ def run_pipeline(args) -> None:
             int(event_df["has_text"].sum()) if args.aggregation_period == "quarterly" and "has_text" in event_df else 0
         ),
         "max_sec_text_chars": args.max_sec_text_chars,
+        "max_sec_filings_per_ticker": args.max_sec_filings_per_ticker,
         "max_weekly_text_chars": args.max_weekly_text_chars,
         "price_workers": args.price_workers,
         "sec_workers": args.sec_workers,
@@ -1037,6 +1056,12 @@ if __name__ == "__main__":
     parser.add_argument("--sec-user-agent", type=str, default=SEC_USER_AGENT_DEFAULT)
     parser.add_argument("--top-by-market-cap", action="store_true")
     parser.add_argument("--max-sec-text-chars", type=int, default=DEFAULT_MAX_SEC_TEXT_CHARS)
+    parser.add_argument(
+        "--max-sec-filings-per-ticker",
+        type=int,
+        default=0,
+        help="Cap date-filtered SEC 8-K text downloads per ticker. 0 means no cap.",
+    )
     parser.add_argument("--max-weekly-text-chars", type=int, default=DEFAULT_MAX_WEEKLY_TEXT_CHARS)
     parser.add_argument("--price-workers", type=int, default=DEFAULT_PRICE_WORKERS)
     parser.add_argument("--sec-workers", type=int, default=DEFAULT_SEC_WORKERS)
