@@ -1,0 +1,22 @@
+{
+  "strategy_name": "sp500_buy_hold",
+  "initial_capital": 100.0,
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "ending_portfolio_value": 104.24293616700771,
+  "total_return": 0.04242936167007705,
+  "weeks_traded": 81,
+  "long_trades": 81,
+  "short_trades": 0,
+  "hit_rate": 0.5308641975308642,
+  "max_drawdown": -0.09097524918009248,
+  "volatility": 0.00890863954418306,
+  "average_weekly_return": 0.0005527570815397647,
+  "requested_k_long": 1,
+  "requested_k_short": 0,
+  "effective_k_long_min": 1,
+  "effective_k_long_max": 1,
+  "effective_k_short_min": 0,
+  "effective_k_short_max": 0
+}

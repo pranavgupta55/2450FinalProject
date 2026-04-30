@@ -1,0 +1,17 @@
+{
+  "strategy_name": "sp500_buy_hold",
+  "source_model_name": null,
+  "dataset_name": "sp500_500_2yr",
+  "rebalance_frequency": "daily",
+  "portfolio_construction": "buy_and_hold",
+  "portfolio_type": "long_only",
+  "trading_mode": "buy_hold",
+  "signal_regime": "benchmark",
+  "requested_k_long": 1,
+  "requested_k_short": 0,
+  "initial_capital": 100.0,
+  "random_state": null,
+  "adaptive_position_sizing": false,
+  "source_artifact_path": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/artifacts/experiments/sp500_buy_hold/sp500_500_2yr",
+  "periods_with_positions": 102
+}

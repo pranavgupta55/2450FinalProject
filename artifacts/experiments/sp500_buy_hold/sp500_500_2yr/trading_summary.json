@@ -1,0 +1,23 @@
+{
+  "capital_per_trade": 100.0,
+  "alpha_threshold": null,
+  "portfolio_type": "long_only",
+  "trading_mode": "buy_hold",
+  "signal_regime": "benchmark",
+  "trades_executed": 1,
+  "long_trades": 1,
+  "short_trades": 0,
+  "flat_rows": 0,
+  "hit_rate": 1.0,
+  "gross_profit_dollars": 4.745895756288188,
+  "gross_loss_dollars": 0.0,
+  "net_pnl_dollars": 4.745895756288188,
+  "average_pnl_dollars": 4.745895756288188,
+  "max_cumulative_pnl_dollars": 5.30309556884907,
+  "min_cumulative_pnl_dollars": -6.882946469053652,
+  "return_on_traded_capital": 0.047458957562881876,
+  "benchmark_symbol": "^GSPC",
+  "benchmark_start_date": "2025-12-02T00:00:00",
+  "benchmark_end_date": "2026-04-29T00:00:00",
+  "holding_days": 148
+}

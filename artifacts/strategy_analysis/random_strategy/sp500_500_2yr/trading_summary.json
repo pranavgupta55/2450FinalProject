@@ -1,0 +1,22 @@
+{
+  "strategy_name": "random_strategy",
+  "initial_capital": 100.0,
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "ending_portfolio_value": 96.6229116077208,
+  "total_return": -0.03377088392279204,
+  "weeks_traded": 21,
+  "long_trades": 105,
+  "short_trades": 0,
+  "hit_rate": 0.38095238095238093,
+  "max_drawdown": -0.14188519462460314,
+  "volatility": 0.02660865899725457,
+  "average_weekly_return": -0.001287580286279884,
+  "requested_k_long": 5,
+  "requested_k_short": 0,
+  "effective_k_long_min": 5,
+  "effective_k_long_max": 5,
+  "effective_k_short_min": 0,
+  "effective_k_short_max": 0
+}

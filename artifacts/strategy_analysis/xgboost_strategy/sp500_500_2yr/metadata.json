@@ -1,0 +1,17 @@
+{
+  "strategy_name": "xgboost_strategy",
+  "source_model_name": "xgboost",
+  "dataset_name": "sp500_500_2yr",
+  "rebalance_frequency": "weekly",
+  "portfolio_type": "long_only",
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_construction": "top_k_long_only",
+  "requested_k_long": 5,
+  "requested_k_short": 0,
+  "initial_capital": 100.0,
+  "random_state": null,
+  "adaptive_position_sizing": true,
+  "source_artifact_path": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/artifacts/experiments/xgboost/sp500_500_2yr",
+  "weeks_with_positions": 21
+}

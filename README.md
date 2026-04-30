@@ -89,6 +89,9 @@ npm run dev
 
 The dashboard reads existing artifacts from `artifacts/experiments/` and does not modify the ML pipeline.
 
+For long-only strategy-analysis handoff details, including optional FinBERT artifact discovery,
+see `docs/LONG_ONLY_TRADING_HANDOFF.md`.
+
 ## Artifact Layout
 
 Each experiment run is stored under:

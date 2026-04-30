@@ -1,0 +1,2 @@
+ticker,start_date,end_date,holding_days,benchmark_return,benchmark_net_pnl_dollars,benchmark_type
+^GSPC,2026-01-02T00:00:00,2026-04-29T00:00:00,117,0.04242936167007638,4.242936167007638,buy_and_hold

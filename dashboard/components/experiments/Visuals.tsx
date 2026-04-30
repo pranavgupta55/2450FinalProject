@@ -111,6 +111,12 @@ function formatStrategyLabel(strategyName: string) {
   if (strategyName === "xgboost_strategy") {
     return "XGBoost";
   }
+  if (
+    strategyName === "finbert_strategy" ||
+    strategyName === "finbert_multimodal_attention_strategy"
+  ) {
+    return "FinBERT";
+  }
   if (strategyName === "random_strategy") {
     return "Random";
   }
@@ -1056,6 +1062,20 @@ export function StrategyComparisonChart({ runs }: { runs: StrategyRun[] }) {
           );
         })}
       </div>
+
+      {!strategyRuns.some((run) => run.strategyName === "finbert_strategy") ? (
+        <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+          FinBERT strategy not yet available. Add either{" "}
+          <span className="text-text-main">
+            artifacts/experiments/finbert_multimodal_attention/&lt;dataset&gt;
+          </span>{" "}
+          or{" "}
+          <span className="text-text-main">
+            artifacts/experiments/finbert/&lt;dataset&gt;
+          </span>
+          , rerun strategy analysis, and refresh.
+        </p>
+      ) : null}
     </div>
   );
 }

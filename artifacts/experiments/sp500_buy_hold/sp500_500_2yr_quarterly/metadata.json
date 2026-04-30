@@ -1,0 +1,78 @@
+{
+  "model_name": "sp500_buy_hold",
+  "dataset_name": "sp500_500_2yr_quarterly",
+  "benchmark_symbol": "^GSPC",
+  "portfolio_type": "long_only",
+  "trading_mode": "buy_hold",
+  "signal_regime": "benchmark",
+  "portfolio_construction": "buy_and_hold",
+  "benchmark_strategy": "buy_then_hold_until_latest_available_date",
+  "initial_capital": 100.0,
+  "split_metadata": {
+    "time_column": "week_start",
+    "test_ratio": 0.2,
+    "train_rows": 1929,
+    "test_rows": 552,
+    "train_periods": 7,
+    "test_periods": 2,
+    "train_start": "2024-04-01 00:00:00",
+    "train_end": "2025-10-01 00:00:00",
+    "test_start": "2026-01-01 00:00:00",
+    "test_end": "2026-04-01 00:00:00",
+    "dataset_name": "sp500_500_2yr_quarterly",
+    "input_dir": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/data/sp500_500_2yr_quarterly",
+    "total_rows": 2481,
+    "feature_spec": {
+      "numeric": [
+        "close",
+        "volume",
+        "vol_ma_5",
+        "price_ma_5",
+        "price_ma_20",
+        "volatility_20",
+        "sec_event_count",
+        "sec_filing_text_count",
+        "finnhub_event_count",
+        "yahoo_event_count",
+        "has_text",
+        "text_source_count",
+        "event_text_char_count",
+        "has_sec_filing",
+        "has_finnhub_news",
+        "has_yahoo_news",
+        "price_vs_ma_5",
+        "price_vs_ma_20",
+        "volume_vs_ma_5",
+        "week_of_year",
+        "month",
+        "days_from_start"
+      ],
+      "categorical": [
+        "ticker"
+      ]
+    },
+    "label_positive_rate": 0.7875856509471987,
+    "label_positive_rate_signed_direction": 0.43571140669085046,
+    "label_positive_rate_abs_move": 0.7875856509471987,
+    "label_column": "label_abs_alpha_gt_1pct",
+    "full_class_counts": {
+      "0": 527,
+      "1": 1954
+    },
+    "full_positive_rate": 0.7875856509471987,
+    "train_class_counts": {
+      "0": 415,
+      "1": 1514
+    },
+    "train_positive_rate": 0.784862623120788,
+    "test_class_counts": {
+      "0": 112,
+      "1": 440
+    },
+    "test_positive_rate": 0.7971014492753623
+  },
+  "input_dir": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/data/sp500_500_2yr_quarterly",
+  "test_rows": 552,
+  "benchmark_start_date": "2026-01-02T00:00:00",
+  "benchmark_end_date": "2026-04-29T00:00:00"
+}

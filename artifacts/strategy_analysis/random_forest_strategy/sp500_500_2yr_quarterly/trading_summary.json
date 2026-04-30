@@ -1,0 +1,22 @@
+{
+  "strategy_name": "random_forest_strategy",
+  "initial_capital": 100.0,
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "ending_portfolio_value": 82.45017900010079,
+  "total_return": -0.17549820999899213,
+  "weeks_traded": 2,
+  "long_trades": 10,
+  "short_trades": 0,
+  "hit_rate": 0.0,
+  "max_drawdown": -0.17549820999899213,
+  "volatility": 0.06916397067221296,
+  "average_weekly_return": -0.08934888961789836,
+  "requested_k_long": 5,
+  "requested_k_short": 0,
+  "effective_k_long_min": 5,
+  "effective_k_long_max": 5,
+  "effective_k_short_min": 0,
+  "effective_k_short_max": 0
+}

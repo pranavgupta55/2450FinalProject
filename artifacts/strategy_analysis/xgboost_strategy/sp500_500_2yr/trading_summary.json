@@ -1,0 +1,22 @@
+{
+  "strategy_name": "xgboost_strategy",
+  "initial_capital": 100.0,
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "ending_portfolio_value": 172.71796394559422,
+  "total_return": 0.7271796394559422,
+  "weeks_traded": 21,
+  "long_trades": 105,
+  "short_trades": 0,
+  "hit_rate": 0.7142857142857143,
+  "max_drawdown": -0.06085506555650633,
+  "volatility": 0.04655911198278465,
+  "average_weekly_return": 0.02740766086899045,
+  "requested_k_long": 5,
+  "requested_k_short": 0,
+  "effective_k_long_min": 5,
+  "effective_k_long_max": 5,
+  "effective_k_short_min": 0,
+  "effective_k_short_max": 0
+}

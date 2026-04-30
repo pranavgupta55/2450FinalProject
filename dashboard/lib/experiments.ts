@@ -104,6 +104,13 @@ const FEATURE_PREVIEW_ROWS = 25;
 const TRADE_PREVIEW_ROWS = 50;
 const FEATURE_CHART_ROWS = 12;
 const PORTFOLIO_STARTING_CAPITAL = 100;
+const FINBERT_CANONICAL_MODEL = "finbert";
+const FINBERT_MODEL_ALIASES = new Set(["finbert_multimodal_attention", "finbert"]);
+const FINBERT_CANONICAL_STRATEGY = "finbert_strategy";
+const FINBERT_STRATEGY_ALIASES = new Set([
+  "finbert_strategy",
+  "finbert_multimodal_attention_strategy",
+]);
 
 type CsvRow = Record<string, string>;
 
@@ -127,6 +134,52 @@ async function exists(targetPath: string) {
   } catch {
     return false;
   }
+}
+
+function normalizeModelName(modelName: string) {
+  return FINBERT_MODEL_ALIASES.has(modelName) ? FINBERT_CANONICAL_MODEL : modelName;
+}
+
+function normalizeStrategyName(strategyName: string) {
+  return FINBERT_STRATEGY_ALIASES.has(strategyName)
+    ? FINBERT_CANONICAL_STRATEGY
+    : strategyName;
+}
+
+function getModelAliasRank(modelName: string) {
+  if (modelName === "finbert_multimodal_attention") {
+    return 0;
+  }
+  if (modelName === "finbert") {
+    return 1;
+  }
+  return 0;
+}
+
+function getStrategyAliasRank(strategyName: string) {
+  if (strategyName === "finbert_strategy") {
+    return 0;
+  }
+  if (strategyName === "finbert_multimodal_attention_strategy") {
+    return 1;
+  }
+  return 0;
+}
+
+function formatArtifactLabel(name: string) {
+  if (name === "finbert" || name === "finbert_strategy") {
+    return "FinBERT";
+  }
+  if (name === "random_forest") {
+    return "Random Forest";
+  }
+  if (name === "xgboost") {
+    return "XGBoost";
+  }
+  if (name === "random_baseline") {
+    return "Random Baseline";
+  }
+  return name.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
@@ -444,7 +497,11 @@ async function listRunDirectories(modelPath: string, datasetNameFilter: string |
     }));
 }
 
-async function loadRun(modelName: string, datasetName: string, runPath: string) {
+async function loadRun(
+  modelName: string,
+  datasetName: string,
+  runPath: string,
+): Promise<ExperimentRun | null> {
   const metricsPath = path.join(runPath, "metrics.json");
   if (!(await exists(metricsPath))) {
     return null;
@@ -475,15 +532,20 @@ async function loadRun(modelName: string, datasetName: string, runPath: string) 
   const predictionSeries = buildPredictionRows(predictionRows, labelColumn);
   const { rocCurve, prCurve } = buildCurvePoints(predictionSeries);
   const portfolioCurve = buildPortfolioCurve(tradeLogRows);
+  const normalizedModelName = normalizeModelName(modelName);
 
   return {
-    id: `${modelName}/${datasetName}`,
-    label: `${modelName} / ${datasetName}`,
-    modelName,
+    id: `${normalizedModelName}/${datasetName}`,
+    label: `${formatArtifactLabel(normalizedModelName)} / ${datasetName}`,
+    modelName: normalizedModelName,
     datasetName,
     updatedAt: stats.mtime.toISOString(),
     metrics,
-    metadata,
+    metadata: {
+      ...metadata,
+      artifact_model_name: modelName,
+      normalized_model_name: normalizedModelName,
+    },
     predictions: buildTablePreview(predictionRows, PREDICTION_PREVIEW_ROWS),
     featureImportance: buildTablePreview(featureImportanceRows, FEATURE_PREVIEW_ROWS),
     tradeLog: buildTablePreview(tradeLogRows, TRADE_PREVIEW_ROWS),
@@ -498,7 +560,11 @@ async function loadRun(modelName: string, datasetName: string, runPath: string) 
   } satisfies ExperimentRun;
 }
 
-async function loadStrategyRun(strategyName: string, datasetName: string, runPath: string) {
+async function loadStrategyRun(
+  strategyName: string,
+  datasetName: string,
+  runPath: string,
+): Promise<StrategyRun | null> {
   const metricsPath = path.join(runPath, "metrics.json");
   if (!(await exists(metricsPath))) {
     return null;
@@ -514,14 +580,20 @@ async function loadStrategyRun(strategyName: string, datasetName: string, runPat
       fs.stat(metricsPath),
     ]);
 
+  const normalizedStrategyName = normalizeStrategyName(strategyName);
+
   return {
-    id: `${strategyName}/${datasetName}`,
-    label: `${strategyName} / ${datasetName}`,
-    strategyName,
+    id: `${normalizedStrategyName}/${datasetName}`,
+    label: `${formatArtifactLabel(normalizedStrategyName)} / ${datasetName}`,
+    strategyName: normalizedStrategyName,
     datasetName,
     updatedAt: stats.mtime.toISOString(),
     metrics,
-    metadata,
+    metadata: {
+      ...metadata,
+      artifact_strategy_name: strategyName,
+      normalized_strategy_name: normalizedStrategyName,
+    },
     predictions: buildTablePreview(predictionRows, PREDICTION_PREVIEW_ROWS),
     tradeLog: buildTablePreview(tradeLogRows, TRADE_PREVIEW_ROWS),
     tradingSummary,
@@ -529,6 +601,62 @@ async function loadStrategyRun(strategyName: string, datasetName: string, runPat
       portfolioCurve: buildPortfolioCurve(tradeLogRows),
     },
   } satisfies StrategyRun;
+}
+
+function dedupeExperimentRuns(runs: ExperimentRun[]) {
+  const byCanonicalRun = new Map<string, ExperimentRun>();
+
+  for (const run of runs) {
+    const key = `${run.modelName}/${run.datasetName}`;
+    const current = byCanonicalRun.get(key);
+    if (!current) {
+      byCanonicalRun.set(key, run);
+      continue;
+    }
+
+    const runSourceName =
+      typeof run.metadata.artifact_model_name === "string"
+        ? run.metadata.artifact_model_name
+        : run.modelName;
+    const currentSourceName =
+      typeof current.metadata.artifact_model_name === "string"
+        ? current.metadata.artifact_model_name
+        : current.modelName;
+
+    if (getModelAliasRank(runSourceName) < getModelAliasRank(currentSourceName)) {
+      byCanonicalRun.set(key, run);
+    }
+  }
+
+  return Array.from(byCanonicalRun.values());
+}
+
+function dedupeStrategyRuns(runs: StrategyRun[]) {
+  const byCanonicalRun = new Map<string, StrategyRun>();
+
+  for (const run of runs) {
+    const key = `${run.strategyName}/${run.datasetName}`;
+    const current = byCanonicalRun.get(key);
+    if (!current) {
+      byCanonicalRun.set(key, run);
+      continue;
+    }
+
+    const runSourceName =
+      typeof run.metadata.artifact_strategy_name === "string"
+        ? run.metadata.artifact_strategy_name
+        : run.strategyName;
+    const currentSourceName =
+      typeof current.metadata.artifact_strategy_name === "string"
+        ? current.metadata.artifact_strategy_name
+        : current.strategyName;
+
+    if (getStrategyAliasRank(runSourceName) < getStrategyAliasRank(currentSourceName)) {
+      byCanonicalRun.set(key, run);
+    }
+  }
+
+  return Array.from(byCanonicalRun.values());
 }
 
 export async function loadDashboardData(
@@ -568,7 +696,7 @@ export async function loadDashboardData(
       )
     : [];
 
-  const runs = runsByModel.flat();
+  const runs = dedupeExperimentRuns(runsByModel.flat());
   const strategyRuns = strategyRootExists
     ? (
         await Promise.all(
@@ -589,9 +717,10 @@ export async function loadDashboardData(
         )
       ).flat()
     : [];
+  const dedupedStrategyRuns = dedupeStrategyRuns(strategyRuns);
 
   runs.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-  strategyRuns.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  dedupedStrategyRuns.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   return {
     artifactRoot: datasetNameFilter
@@ -601,6 +730,6 @@ export async function loadDashboardData(
     strategyArtifactRoot: datasetNameFilter
       ? `artifacts/strategy_analysis/*/${datasetNameFilter}`
       : "artifacts/strategy_analysis",
-    strategyRuns,
+    strategyRuns: dedupedStrategyRuns,
   };
 }
