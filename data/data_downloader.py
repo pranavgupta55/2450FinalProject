@@ -401,6 +401,9 @@ def fetch_sec_8k_filings_for_ticker(
     ticker: str,
     cik_map: dict[str, str],
     user_agent: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    max_filings: int | None = None,
 ) -> list[dict]:
     sec_ticker = normalize_ticker_for_sec_lookup(ticker).upper()
     cik = cik_map.get(sec_ticker)
@@ -421,10 +424,19 @@ def fetch_sec_8k_filings_for_ticker(
         dates = recent.get("filingDate", [])
         accessions = recent.get("accessionNumber", [])
         primary_docs = recent.get("primaryDocument", [])
+        start_ts = pd.to_datetime(start_date) if start_date else None
+        end_ts = pd.to_datetime(end_date) if end_date else None
 
         rows = []
         for form, filing_date, accession, primary_doc in zip(forms, dates, accessions, primary_docs):
             if form != "8-K":
+                continue
+            filing_ts = pd.to_datetime(filing_date, errors="coerce")
+            if pd.isna(filing_ts):
+                continue
+            if start_ts is not None and filing_ts < start_ts:
+                continue
+            if end_ts is not None and filing_ts > end_ts:
                 continue
 
             accession_nodashes = accession.replace("-", "")
@@ -444,6 +456,9 @@ def fetch_sec_8k_filings_for_ticker(
                     "filing_url": filing_url,
                 }
             )
+        rows = sorted(rows, key=lambda row: row["filing_date"], reverse=True)
+        if max_filings is not None and max_filings > 0:
+            rows = rows[:max_filings]
         return rows
     except Exception as e:
         print(f"[WARN] Failed parsing SEC data for {ticker}: {e}")
@@ -553,7 +568,21 @@ def fetch_yahoo_rss_news(ticker: str) -> list[dict]:
         return []
 
 
-def build_weekly_event_dataset(
+def assign_period_start(
+    frame: pd.DataFrame,
+    date_column: str,
+    period_column: str,
+    period_frequency: str,
+) -> pd.DataFrame:
+    out = frame.copy()
+    dates = pd.to_datetime(out[date_column], errors="coerce")
+    out[period_column] = dates.dt.to_period(period_frequency).apply(
+        lambda period: period.start_time if pd.notna(period) else pd.NaT
+    )
+    return out
+
+
+def build_period_event_dataset(
     tickers: list[str],
     price_df: pd.DataFrame,
     sec_meta_df: pd.DataFrame,
@@ -561,18 +590,20 @@ def build_weekly_event_dataset(
     finnhub_df: pd.DataFrame,
     yahoo_df: pd.DataFrame,
     max_weekly_text_chars: int = DEFAULT_MAX_WEEKLY_TEXT_CHARS,
+    period_column: str = "week_start",
+    period_frequency: str = "W-MON",
+    period_label: str = "weekly",
 ) -> pd.DataFrame:
-    print("[INFO] Building weekly event dataset...")
+    print(f"[INFO] Building {period_label} event dataset...")
 
     if price_df.empty:
         return pd.DataFrame()
 
-    work = price_df.copy()
-    work["week_start"] = work["Date"].dt.to_period("W-MON").apply(lambda p: p.start_time)
+    work = assign_period_start(price_df, "Date", period_column, period_frequency)
 
-    numeric_weekly = (
+    numeric_period = (
         work.sort_values(["ticker", "Date"])
-        .groupby(["ticker", "week_start"], as_index=False)
+        .groupby(["ticker", period_column], as_index=False)
         .agg(
             last_date=("Date", "max"),
             close=("Adj Close", "last"),
@@ -589,27 +620,27 @@ def build_weekly_event_dataset(
     if not sec_meta_df.empty:
         sec_meta_df = sec_meta_df.copy()
         sec_meta_df["filing_date"] = pd.to_datetime(sec_meta_df["filing_date"], errors="coerce")
-        sec_meta_df["week_start"] = sec_meta_df["filing_date"].dt.to_period("W-MON").apply(lambda p: p.start_time)
-        sec_weekly = (
-            sec_meta_df.groupby(["ticker", "week_start"], as_index=False)
+        sec_meta_df = assign_period_start(sec_meta_df, "filing_date", period_column, period_frequency)
+        sec_period = (
+            sec_meta_df.groupby(["ticker", period_column], as_index=False)
             .agg(
                 sec_event_count=("accession_number", "count"),
                 sec_latest_filing_url=("filing_url", "last"),
             )
         )
     else:
-        sec_weekly = pd.DataFrame(columns=["ticker", "week_start", "sec_event_count", "sec_latest_filing_url"])
+        sec_period = pd.DataFrame(columns=["ticker", period_column, "sec_event_count", "sec_latest_filing_url"])
 
     if not sec_text_df.empty:
         sec_text_df = sec_text_df.copy()
         sec_text_df["filing_date"] = pd.to_datetime(sec_text_df["filing_date"], errors="coerce")
-        sec_text_df["week_start"] = sec_text_df["filing_date"].dt.to_period("W-MON").apply(lambda p: p.start_time)
+        sec_text_df = assign_period_start(sec_text_df, "filing_date", period_column, period_frequency)
         sec_text_df["filing_text"] = sec_text_df["filing_text"].map(clean_text)
-        sec_text_df = sec_text_df.dropna(subset=["week_start"])
+        sec_text_df = sec_text_df.dropna(subset=[period_column])
         sec_text_df = sec_text_df[sec_text_df["filing_text"].str.len() > 0]
         if not sec_text_df.empty:
-            sec_text_weekly = (
-                sec_text_df.groupby(["ticker", "week_start"], as_index=False)
+            sec_text_period = (
+                sec_text_df.groupby(["ticker", period_column], as_index=False)
                 .agg(
                     sec_filing_text_count=("filing_text", "count"),
                     sec_filing_text=(
@@ -619,22 +650,22 @@ def build_weekly_event_dataset(
                 )
             )
         else:
-            sec_text_weekly = pd.DataFrame(
-                columns=["ticker", "week_start", "sec_filing_text_count", "sec_filing_text"]
+            sec_text_period = pd.DataFrame(
+                columns=["ticker", period_column, "sec_filing_text_count", "sec_filing_text"]
             )
     else:
-        sec_text_weekly = pd.DataFrame(
-            columns=["ticker", "week_start", "sec_filing_text_count", "sec_filing_text"]
+        sec_text_period = pd.DataFrame(
+            columns=["ticker", period_column, "sec_filing_text_count", "sec_filing_text"]
         )
 
     if not finnhub_df.empty:
         finnhub_df = finnhub_df.copy()
         finnhub_df["date"] = pd.to_datetime(finnhub_df["date"], errors="coerce")
-        finnhub_df["week_start"] = finnhub_df["date"].dt.to_period("W-MON").apply(lambda p: p.start_time)
+        finnhub_df = assign_period_start(finnhub_df, "date", period_column, period_frequency)
         finnhub_df["news_text"] = finnhub_df.apply(format_news_text, axis=1)
         finnhub_df["_event_row"] = 1
-        finnhub_weekly = (
-            finnhub_df.groupby(["ticker", "week_start"], as_index=False)
+        finnhub_period = (
+            finnhub_df.groupby(["ticker", period_column], as_index=False)
             .agg(
                 finnhub_event_count=("_event_row", "sum"),
                 finnhub_headline_sample=("headline", "last"),
@@ -646,10 +677,10 @@ def build_weekly_event_dataset(
             )
         )
     else:
-        finnhub_weekly = pd.DataFrame(
+        finnhub_period = pd.DataFrame(
             columns=[
                 "ticker",
-                "week_start",
+                period_column,
                 "finnhub_event_count",
                 "finnhub_headline_sample",
                 "finnhub_summary_sample",
@@ -660,11 +691,11 @@ def build_weekly_event_dataset(
     if not yahoo_df.empty:
         yahoo_df = yahoo_df.copy()
         yahoo_df["date"] = pd.to_datetime(yahoo_df["date"], errors="coerce", utc=True).dt.tz_localize(None)
-        yahoo_df["week_start"] = yahoo_df["date"].dt.to_period("W-MON").apply(lambda p: p.start_time)
+        yahoo_df = assign_period_start(yahoo_df, "date", period_column, period_frequency)
         yahoo_df["news_text"] = yahoo_df.apply(format_news_text, axis=1)
         yahoo_df["_event_row"] = 1
-        yahoo_weekly = (
-            yahoo_df.groupby(["ticker", "week_start"], as_index=False)
+        yahoo_period = (
+            yahoo_df.groupby(["ticker", period_column], as_index=False)
             .agg(
                 yahoo_event_count=("_event_row", "sum"),
                 yahoo_headline_sample=("headline", "last"),
@@ -676,10 +707,10 @@ def build_weekly_event_dataset(
             )
         )
     else:
-        yahoo_weekly = pd.DataFrame(
+        yahoo_period = pd.DataFrame(
             columns=[
                 "ticker",
-                "week_start",
+                period_column,
                 "yahoo_event_count",
                 "yahoo_headline_sample",
                 "yahoo_summary_sample",
@@ -687,10 +718,10 @@ def build_weekly_event_dataset(
             ]
         )
 
-    out = numeric_weekly.merge(sec_weekly, on=["ticker", "week_start"], how="left")
-    out = out.merge(sec_text_weekly, on=["ticker", "week_start"], how="left")
-    out = out.merge(finnhub_weekly, on=["ticker", "week_start"], how="left")
-    out = out.merge(yahoo_weekly, on=["ticker", "week_start"], how="left")
+    out = numeric_period.merge(sec_period, on=["ticker", period_column], how="left")
+    out = out.merge(sec_text_period, on=["ticker", period_column], how="left")
+    out = out.merge(finnhub_period, on=["ticker", period_column], how="left")
+    out = out.merge(yahoo_period, on=["ticker", period_column], how="left")
 
     for col in ["sec_event_count", "sec_filing_text_count", "finnhub_event_count", "yahoo_event_count"]:
         if col in out.columns:
@@ -719,7 +750,56 @@ def build_weekly_event_dataset(
     )
     out["event_text_char_count"] = out["combined_event_text"].str.len().astype(int)
 
+    if period_column != "week_start":
+        out["week_start"] = out[period_column]
+
     return out
+
+
+def build_weekly_event_dataset(
+    tickers: list[str],
+    price_df: pd.DataFrame,
+    sec_meta_df: pd.DataFrame,
+    sec_text_df: pd.DataFrame,
+    finnhub_df: pd.DataFrame,
+    yahoo_df: pd.DataFrame,
+    max_weekly_text_chars: int = DEFAULT_MAX_WEEKLY_TEXT_CHARS,
+) -> pd.DataFrame:
+    return build_period_event_dataset(
+        tickers=tickers,
+        price_df=price_df,
+        sec_meta_df=sec_meta_df,
+        sec_text_df=sec_text_df,
+        finnhub_df=finnhub_df,
+        yahoo_df=yahoo_df,
+        max_weekly_text_chars=max_weekly_text_chars,
+        period_column="week_start",
+        period_frequency="W-MON",
+        period_label="weekly",
+    )
+
+
+def build_quarterly_event_dataset(
+    tickers: list[str],
+    price_df: pd.DataFrame,
+    sec_meta_df: pd.DataFrame,
+    sec_text_df: pd.DataFrame,
+    finnhub_df: pd.DataFrame,
+    yahoo_df: pd.DataFrame,
+    max_weekly_text_chars: int = DEFAULT_MAX_WEEKLY_TEXT_CHARS,
+) -> pd.DataFrame:
+    return build_period_event_dataset(
+        tickers=tickers,
+        price_df=price_df,
+        sec_meta_df=sec_meta_df,
+        sec_text_df=sec_text_df,
+        finnhub_df=finnhub_df,
+        yahoo_df=yahoo_df,
+        max_weekly_text_chars=max_weekly_text_chars,
+        period_column="quarter_start",
+        period_frequency="Q",
+        period_label="quarterly",
+    )
 
 
 def build_coverage_summary(
@@ -800,6 +880,9 @@ def run_pipeline(args) -> None:
                 ticker,
                 cik_map,
                 args.sec_user_agent,
+                start_date=start,
+                end_date=end,
+                max_filings=args.max_sec_filings_per_ticker,
             ),
             "SEC metadata",
             args.sec_workers,
@@ -878,16 +961,31 @@ def run_pipeline(args) -> None:
     save_df(yahoo_df, os.path.join(args.outdir, "yahoo_news"))
     step_progress.update(1)
 
-    weekly_event_df = build_weekly_event_dataset(
-        tickers=tickers,
-        price_df=price_features_df,
-        sec_meta_df=sec_meta_df,
-        sec_text_df=sec_text_df,
-        finnhub_df=finnhub_df,
-        yahoo_df=yahoo_df,
-        max_weekly_text_chars=args.max_weekly_text_chars,
-    )
-    save_df(weekly_event_df, os.path.join(args.outdir, "weekly_event_dataset"))
+    if args.aggregation_period == "quarterly":
+        event_df = build_quarterly_event_dataset(
+            tickers=tickers,
+            price_df=price_features_df,
+            sec_meta_df=sec_meta_df,
+            sec_text_df=sec_text_df,
+            finnhub_df=finnhub_df,
+            yahoo_df=yahoo_df,
+            max_weekly_text_chars=args.max_weekly_text_chars,
+        )
+        save_df(event_df, os.path.join(args.outdir, "quarterly_event_dataset"))
+        # The training stack currently loads `weekly_event_dataset.*`.
+        # Keep this compatibility alias even when rows are quarter-start rows.
+        save_df(event_df, os.path.join(args.outdir, "weekly_event_dataset"))
+    else:
+        event_df = build_weekly_event_dataset(
+            tickers=tickers,
+            price_df=price_features_df,
+            sec_meta_df=sec_meta_df,
+            sec_text_df=sec_text_df,
+            finnhub_df=finnhub_df,
+            yahoo_df=yahoo_df,
+            max_weekly_text_chars=args.max_weekly_text_chars,
+        )
+        save_df(event_df, os.path.join(args.outdir, "weekly_event_dataset"))
 
     coverage_summary_df = build_coverage_summary(
         tickers=tickers,
@@ -910,14 +1008,27 @@ def run_pipeline(args) -> None:
         "sec_filings_text_rows": int(len(sec_text_df)),
         "finnhub_news_rows": int(len(finnhub_df)),
         "yahoo_news_rows": int(len(yahoo_df)),
-        "weekly_event_rows": int(len(weekly_event_df)),
-        "weekly_event_rows_with_text": (
-            int(weekly_event_df["has_text"].sum()) if "has_text" in weekly_event_df else 0
+        "aggregation_period": args.aggregation_period,
+        "event_rows": int(len(event_df)),
+        "event_rows_with_text": (
+            int(event_df["has_text"].sum()) if "has_text" in event_df else 0
         ),
-        "weekly_event_text_characters": int(weekly_event_df["event_text_char_count"].sum())
-        if "event_text_char_count" in weekly_event_df
+        "event_text_characters": int(event_df["event_text_char_count"].sum())
+        if "event_text_char_count" in event_df
         else 0,
+        "weekly_event_rows": int(len(event_df)),
+        "weekly_event_rows_with_text": (
+            int(event_df["has_text"].sum()) if "has_text" in event_df else 0
+        ),
+        "weekly_event_text_characters": int(event_df["event_text_char_count"].sum())
+        if "event_text_char_count" in event_df
+        else 0,
+        "quarterly_event_rows": int(len(event_df)) if args.aggregation_period == "quarterly" else 0,
+        "quarterly_event_rows_with_text": (
+            int(event_df["has_text"].sum()) if args.aggregation_period == "quarterly" and "has_text" in event_df else 0
+        ),
         "max_sec_text_chars": args.max_sec_text_chars,
+        "max_sec_filings_per_ticker": args.max_sec_filings_per_ticker,
         "max_weekly_text_chars": args.max_weekly_text_chars,
         "price_workers": args.price_workers,
         "sec_workers": args.sec_workers,
@@ -945,10 +1056,22 @@ if __name__ == "__main__":
     parser.add_argument("--sec-user-agent", type=str, default=SEC_USER_AGENT_DEFAULT)
     parser.add_argument("--top-by-market-cap", action="store_true")
     parser.add_argument("--max-sec-text-chars", type=int, default=DEFAULT_MAX_SEC_TEXT_CHARS)
+    parser.add_argument(
+        "--max-sec-filings-per-ticker",
+        type=int,
+        default=0,
+        help="Cap date-filtered SEC 8-K text downloads per ticker. 0 means no cap.",
+    )
     parser.add_argument("--max-weekly-text-chars", type=int, default=DEFAULT_MAX_WEEKLY_TEXT_CHARS)
     parser.add_argument("--price-workers", type=int, default=DEFAULT_PRICE_WORKERS)
     parser.add_argument("--sec-workers", type=int, default=DEFAULT_SEC_WORKERS)
     parser.add_argument("--news-workers", type=int, default=DEFAULT_NEWS_WORKERS)
+    parser.add_argument(
+        "--aggregation-period",
+        choices=["weekly", "quarterly"],
+        default="weekly",
+        help="Granularity for the model event dataset. Quarterly also writes a weekly_event_dataset compatibility alias.",
+    )
 
     args = parser.parse_args()
     run_pipeline(args)

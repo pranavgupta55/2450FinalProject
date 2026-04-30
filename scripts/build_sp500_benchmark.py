@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.alpha_signal.config import DEFAULT_ARTIFACT_DIR
+from src.alpha_signal.config import DEFAULT_ARTIFACT_DIR, PORTFOLIO_TYPE_LONG_ONLY
 from src.alpha_signal.data.splitting import load_split_artifacts
 from src.alpha_signal.models.training import save_experiment_artifacts
 
@@ -104,6 +104,9 @@ def build_benchmark_trade_log(
     summary = {
         "capital_per_trade": float(initial_capital),
         "alpha_threshold": None,
+        "portfolio_type": PORTFOLIO_TYPE_LONG_ONLY,
+        "trading_mode": "buy_hold",
+        "signal_regime": "benchmark",
         "trades_executed": 1,
         "long_trades": 1,
         "short_trades": 0,
@@ -163,6 +166,10 @@ def main():
         "model_name": "sp500_buy_hold",
         "dataset_name": args.dataset_name,
         "benchmark_symbol": "^GSPC",
+        "portfolio_type": PORTFOLIO_TYPE_LONG_ONLY,
+        "trading_mode": "buy_hold",
+        "signal_regime": "benchmark",
+        "portfolio_construction": "buy_and_hold",
         "benchmark_strategy": "buy_then_hold_until_latest_available_date",
         "initial_capital": float(args.initial_capital),
         "split_metadata": split_metadata,

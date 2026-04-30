@@ -159,6 +159,26 @@ def attach_weekly_text_bundle(
     for column in ["sec_text", "finnhub_text", "yahoo_text", "combined_text"]:
         if column in merged.columns:
             merged[column] = merged[column].fillna("")
-    if "has_text" in merged.columns:
+    if "combined_event_text" in merged.columns:
+        existing_text = merged["combined_event_text"].fillna("").map(_clean_text)
+        if "combined_text" in merged.columns:
+            missing_text = merged["combined_text"].fillna("").astype(str).str.len() == 0
+            merged.loc[missing_text, "combined_text"] = existing_text.loc[missing_text]
+        else:
+            merged["combined_text"] = existing_text
+
+    # `split_df` can already contain a weekly `has_text` feature. When that
+    # happens, pandas suffixes the text-bundle value to `has_text_y`.
+    # Prefer the split's value because quarterly datasets carry their already
+    # aggregated text in `combined_event_text`.
+    if "has_text_x" in merged.columns:
+        merged["has_text"] = merged["has_text_x"].fillna(0).astype(int)
+    elif "has_text_y" in merged.columns:
+        merged["has_text"] = merged["has_text_y"].fillna(0).astype(int)
+    elif "has_text" in merged.columns:
         merged["has_text"] = merged["has_text"].fillna(0).astype(int)
+    elif "combined_text" in merged.columns:
+        merged["has_text"] = (merged["combined_text"].fillna("").astype(str).str.len() > 0).astype(int)
+    else:
+        merged["has_text"] = 0
     return merged

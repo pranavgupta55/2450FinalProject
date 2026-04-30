@@ -1,0 +1,151 @@
+{
+  "model_name": "random_baseline",
+  "dataset_name": "sp500_500_2yr",
+  "label_column": "label_abs_alpha_gt_1pct",
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "random_state": 42,
+  "train_rows": 32252,
+  "test_rows": 8190,
+  "full_class_counts": {
+    "0": 9535,
+    "1": 30907
+  },
+  "full_positive_rate": 0.7642302556747935,
+  "train_class_counts": {
+    "0": 7822,
+    "1": 24430
+  },
+  "train_positive_rate": 0.7574724048121046,
+  "test_class_counts": {
+    "0": 1713,
+    "1": 6477
+  },
+  "test_positive_rate": 0.7908424908424908,
+  "capital_per_trade": 10000.0,
+  "threshold": 0.05,
+  "threshold_metric": "f1",
+  "threshold_selection": {
+    "threshold": 0.05,
+    "metric": "f1",
+    "metric_value": 0.847047991713661,
+    "metrics": {
+      "threshold": 0.05,
+      "accuracy": 0.7375074066758839,
+      "precision": 0.7641196013289037,
+      "recall": 0.9501678285566744,
+      "f1": 0.847047991713661,
+      "positive_rate": 0.7649614852854039,
+      "roc_auc": 0.5017420756063851,
+      "average_precision": 0.7708300903978074,
+      "true_negatives": 54,
+      "false_positives": 1136,
+      "false_negatives": 193,
+      "true_positives": 3680
+    }
+  },
+  "validation_ratio": 0.15,
+  "validation_split": {
+    "time_column": "week_start",
+    "validation_ratio": 0.15,
+    "train_rows": 27189,
+    "validation_rows": 5063,
+    "train_periods": 70,
+    "validation_periods": 13,
+    "train_start": "2024-04-30 00:00:00",
+    "train_end": "2025-08-26 00:00:00",
+    "validation_start": "2025-09-02 00:00:00",
+    "validation_end": "2025-11-25 00:00:00"
+  },
+  "alpha_trade_threshold": 0.07305226276304887,
+  "alpha_trade_objective": "return_on_traded_capital",
+  "alpha_trade_threshold_selection": {
+    "threshold": 0.07305226276304887,
+    "objective": "return_on_traded_capital",
+    "objective_value": 0.001182438607612107,
+    "summary": {
+      "capital_per_trade": 10000.0,
+      "alpha_threshold": 0.07305226276304887,
+      "trading_mode": "long_only",
+      "signal_regime": "positive_only",
+      "portfolio_type": "long_only",
+      "trades_executed": 248,
+      "long_trades": 248,
+      "short_trades": 0,
+      "flat_rows": 4815,
+      "hit_rate": 0.49193548387096775,
+      "gross_profit_dollars": 38006.7086739198,
+      "gross_loss_dollars": -35074.26092704179,
+      "net_pnl_dollars": 2932.447746878025,
+      "average_pnl_dollars": 11.824386076121069,
+      "max_cumulative_pnl_dollars": 3041.813836809338,
+      "min_cumulative_pnl_dollars": -11206.191748945106,
+      "return_on_traded_capital": 0.001182438607612107
+    }
+  },
+  "baseline_strategy": "uniform_probability_and_gaussian_alpha_score",
+  "split_metadata": {
+    "time_column": "week_start",
+    "test_ratio": 0.2,
+    "train_rows": 32252,
+    "test_rows": 8190,
+    "train_periods": 83,
+    "test_periods": 21,
+    "train_start": "2024-04-30 00:00:00",
+    "train_end": "2025-11-25 00:00:00",
+    "test_start": "2025-12-02 00:00:00",
+    "test_end": "2026-04-21 00:00:00",
+    "dataset_name": "sp500_500_2yr",
+    "input_dir": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/data/sp500_500_2yr",
+    "total_rows": 40442,
+    "feature_spec": {
+      "numeric": [
+        "close",
+        "volume",
+        "vol_ma_5",
+        "price_ma_5",
+        "price_ma_20",
+        "volatility_20",
+        "sec_event_count",
+        "sec_filing_text_count",
+        "finnhub_event_count",
+        "yahoo_event_count",
+        "has_text",
+        "text_source_count",
+        "event_text_char_count",
+        "has_sec_filing",
+        "has_finnhub_news",
+        "has_yahoo_news",
+        "price_vs_ma_5",
+        "price_vs_ma_20",
+        "volume_vs_ma_5",
+        "week_of_year",
+        "month",
+        "days_from_start"
+      ],
+      "categorical": [
+        "ticker"
+      ]
+    },
+    "label_positive_rate": 0.7642302556747935,
+    "label_positive_rate_signed_direction": 0.4851639384797982,
+    "label_positive_rate_abs_move": 0.7642302556747935,
+    "label_column": "label_abs_alpha_gt_1pct",
+    "full_class_counts": {
+      "0": 9535,
+      "1": 30907
+    },
+    "full_positive_rate": 0.7642302556747935,
+    "train_class_counts": {
+      "0": 7822,
+      "1": 24430
+    },
+    "train_positive_rate": 0.7574724048121046,
+    "test_class_counts": {
+      "0": 1713,
+      "1": 6477
+    },
+    "test_positive_rate": 0.7908424908424908
+  }
+}

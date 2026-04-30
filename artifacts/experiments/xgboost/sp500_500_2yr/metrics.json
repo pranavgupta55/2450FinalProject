@@ -1,0 +1,18 @@
+{
+  "threshold": 0.3,
+  "accuracy": 0.7908424908424908,
+  "precision": 0.7908424908424908,
+  "recall": 1.0,
+  "f1": 0.8832071998363673,
+  "positive_rate": 0.7908424908424908,
+  "roc_auc": 0.5456537980140965,
+  "average_precision": 0.8201014333029362,
+  "true_negatives": 0,
+  "false_positives": 1713,
+  "false_negatives": 0,
+  "true_positives": 6477,
+  "alpha_mae": 0.0367259908906958,
+  "alpha_rmse": 0.05130415166577356,
+  "alpha_r2": -0.030840393776745634,
+  "alpha_direction_accuracy": 0.5316239316239316
+}

@@ -9,7 +9,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.alpha_signal.config import DEFAULT_ARTIFACT_DIR, DEFAULT_LABEL_COLUMN, DEFAULT_RANDOM_STATE
+from src.alpha_signal.config import (
+    DEFAULT_ALPHA_TRADE_OBJECTIVE,
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_INCLUDE_TICKER,
+    DEFAULT_LABEL_COLUMN,
+    DEFAULT_MIN_TRADES_FOR_THRESHOLD,
+    DEFAULT_RANDOM_STATE,
+    DEFAULT_THRESHOLD_METRIC,
+    DEFAULT_VALIDATION_RATIO,
+)
 from src.alpha_signal.data.splitting import load_split_artifacts
 from src.alpha_signal.models.training import train_and_evaluate_model
 
@@ -19,11 +28,17 @@ def parse_args():
     parser.add_argument("--split-dir", type=str, required=True)
     parser.add_argument("--dataset-name", type=str, default="default_dataset")
     parser.add_argument("--output-dir", type=str, default=None)
-    parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument("--label-column", type=str, default=DEFAULT_LABEL_COLUMN)
+    parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--threshold-metric", type=str, default=DEFAULT_THRESHOLD_METRIC)
+    parser.add_argument("--validation-ratio", type=float, default=DEFAULT_VALIDATION_RATIO)
     parser.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
     parser.add_argument("--use-smote", action="store_true")
+    parser.add_argument("--include-ticker", action="store_true")
     parser.add_argument("--capital-per-trade", type=float, default=10_000.0)
-    parser.add_argument("--alpha-trade-threshold", type=float, default=0.0)
+    parser.add_argument("--alpha-trade-threshold", type=float, default=None)
+    parser.add_argument("--alpha-trade-objective", type=str, default=DEFAULT_ALPHA_TRADE_OBJECTIVE)
+    parser.add_argument("--min-trades-for-threshold", type=int, default=DEFAULT_MIN_TRADES_FOR_THRESHOLD)
     return parser.parse_args()
 
 
@@ -70,14 +85,23 @@ def main():
         test_df=test_df,
         output_dir=output_dir,
         dataset_name=args.dataset_name,
-        label_column=DEFAULT_LABEL_COLUMN,
+        label_column=args.label_column,
         threshold=args.threshold,
         use_smote=args.use_smote,
         random_state=args.random_state,
-        extra_metadata={"split_metadata": split_metadata},
+        extra_metadata={
+            "split_metadata": split_metadata,
+            "imbalance_strategy": "class_weight_balanced_subsample",
+            "class_weight": "balanced_subsample",
+        },
         alpha_regressor=alpha_regressor,
         capital_per_trade=args.capital_per_trade,
         alpha_trade_threshold=args.alpha_trade_threshold,
+        validation_ratio=args.validation_ratio,
+        threshold_metric=args.threshold_metric,
+        include_ticker=args.include_ticker,
+        alpha_trade_objective=args.alpha_trade_objective,
+        min_trades_for_threshold=args.min_trades_for_threshold,
     )
 
     print(f"Saved Random Forest artifacts to: {output_dir}")

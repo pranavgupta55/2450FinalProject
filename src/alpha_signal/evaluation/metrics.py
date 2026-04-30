@@ -22,6 +22,8 @@ def compute_binary_classification_metrics(
 
     y_true = np.asarray(y_true).astype(int)
     y_score = np.asarray(y_score, dtype=float)
+    if threshold is None:
+        threshold = 0.5
     y_pred = (y_score >= threshold).astype(int)
 
     metrics = {

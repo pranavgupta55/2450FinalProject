@@ -1,0 +1,19 @@
+{
+  "capital_per_trade": 10000.0,
+  "alpha_threshold": 0.1122836761176585,
+  "trading_mode": "long_only",
+  "signal_regime": "positive_only",
+  "portfolio_type": "long_only",
+  "trades_executed": 13,
+  "long_trades": 13,
+  "short_trades": 0,
+  "flat_rows": 8177,
+  "hit_rate": 0.6923076923076923,
+  "gross_profit_dollars": 3980.3711199481445,
+  "gross_loss_dollars": -2305.517699640317,
+  "net_pnl_dollars": 1674.853420307828,
+  "average_pnl_dollars": 128.83487848521753,
+  "max_cumulative_pnl_dollars": 3594.9194310348576,
+  "min_cumulative_pnl_dollars": -0.0,
+  "return_on_traded_capital": 0.012883487848521754
+}

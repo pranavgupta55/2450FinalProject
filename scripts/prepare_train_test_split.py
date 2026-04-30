@@ -9,13 +9,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.alpha_signal.config import DEFAULT_ARTIFACT_DIR, DEFAULT_TEST_RATIO
+from src.alpha_signal.config import DEFAULT_ARTIFACT_DIR, DEFAULT_LABEL_COLUMN, DEFAULT_TEST_RATIO
 from src.alpha_signal.data.dataset import (
     build_structured_modeling_dataset,
     get_feature_spec,
     load_weekly_event_dataset,
+    ensure_target_columns,
 )
-from src.alpha_signal.data.splitting import save_split_artifacts, time_based_train_test_split
+from src.alpha_signal.data.splitting import (
+    compute_label_audit,
+    save_split_artifacts,
+    time_based_train_test_split,
+)
 
 
 def parse_args():
@@ -26,6 +31,7 @@ def parse_args():
     parser.add_argument("--dataset-name", type=str, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--test-ratio", type=float, default=DEFAULT_TEST_RATIO)
+    parser.add_argument("--label-column", type=str, default=DEFAULT_LABEL_COLUMN)
     return parser.parse_args()
 
 
@@ -41,9 +47,16 @@ def main():
 
     raw_df = load_weekly_event_dataset(args.input_dir)
     modeling_df = build_structured_modeling_dataset(raw_df)
+    modeling_df = ensure_target_columns(modeling_df)
     train_df, test_df, metadata = time_based_train_test_split(
         modeling_df,
         test_ratio=args.test_ratio,
+    )
+    label_audit = compute_label_audit(
+        full_df=modeling_df,
+        train_df=train_df,
+        test_df=test_df,
+        label_column=args.label_column,
     )
 
     feature_spec = get_feature_spec(modeling_df)
@@ -53,7 +66,10 @@ def main():
             "input_dir": str(Path(args.input_dir).resolve()),
             "total_rows": int(len(modeling_df)),
             "feature_spec": feature_spec,
-            "label_positive_rate": float(modeling_df["label_abs_alpha_gt_1pct"].mean()),
+            "label_positive_rate": float(modeling_df[args.label_column].mean()),
+            "label_positive_rate_signed_direction": float(modeling_df["label_alpha_positive"].mean()),
+            "label_positive_rate_abs_move": float(modeling_df["label_abs_alpha_gt_1pct"].mean()),
+            **label_audit,
         }
     )
 
