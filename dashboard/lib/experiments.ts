@@ -69,9 +69,27 @@ export interface ExperimentRun {
   visuals: ExperimentVisuals;
 }
 
+export interface StrategyRun {
+  id: string;
+  label: string;
+  strategyName: string;
+  datasetName: string;
+  updatedAt: string;
+  metrics: Record<string, MetricValue>;
+  metadata: Record<string, JsonLike>;
+  predictions: TablePreview;
+  tradeLog: TablePreview;
+  tradingSummary: Record<string, MetricValue>;
+  visuals: {
+    portfolioCurve: PortfolioPoint[];
+  };
+}
+
 export interface DashboardData {
   artifactRoot: string;
   runs: ExperimentRun[];
+  strategyArtifactRoot: string;
+  strategyRuns: StrategyRun[];
 }
 
 interface LoadDashboardDataOptions {
@@ -80,6 +98,7 @@ interface LoadDashboardDataOptions {
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 const EXPERIMENT_ROOT = path.join(REPO_ROOT, "artifacts", "experiments");
+const STRATEGY_ANALYSIS_ROOT = path.join(REPO_ROOT, "artifacts", "strategy_analysis");
 const PREDICTION_PREVIEW_ROWS = 50;
 const FEATURE_PREVIEW_ROWS = 25;
 const TRADE_PREVIEW_ROWS = 50;
@@ -98,6 +117,7 @@ interface TradeObservation {
   sortValue: number;
   returnContribution: number;
   active: boolean;
+  aggregationMode: "average" | "sum";
 }
 
 async function exists(targetPath: string) {
@@ -309,8 +329,11 @@ function parseTradeObservation(row: CsvRow): TradeObservation | null {
     return {
       period: weekStart,
       sortValue,
-      returnContribution: tradeTaken ? position * realizedAlpha : 0,
+      returnContribution:
+        toNumber(row.period_return_contribution) ??
+        (tradeTaken ? position * realizedAlpha : 0),
       active: tradeTaken,
+      aggregationMode: toNumber(row.period_return_contribution) !== null ? "sum" : "average",
     };
   }
 
@@ -327,8 +350,11 @@ function parseTradeObservation(row: CsvRow): TradeObservation | null {
   return {
     period: benchmarkDate,
     sortValue,
-    returnContribution: tradeTaken ? position * benchmarkReturn : 0,
+    returnContribution:
+      toNumber(row.period_return_contribution) ??
+      (tradeTaken ? position * benchmarkReturn : 0),
     active: tradeTaken,
+    aggregationMode: toNumber(row.period_return_contribution) !== null ? "sum" : "average",
   };
 }
 
@@ -340,6 +366,7 @@ function groupTradeObservations(rows: CsvRow[]) {
       sortValue: number;
       activeCount: number;
       returnSum: number;
+      aggregationMode: "average" | "sum";
     }
   >();
 
@@ -352,9 +379,14 @@ function groupTradeObservations(rows: CsvRow[]) {
         sortValue: observation.sortValue,
         activeCount: 0,
         returnSum: 0,
+        aggregationMode: observation.aggregationMode,
       };
       current.activeCount += observation.active ? 1 : 0;
       current.returnSum += observation.returnContribution;
+      current.aggregationMode =
+        current.aggregationMode === "sum" || observation.aggregationMode === "sum"
+          ? "sum"
+          : "average";
       grouped.set(observation.period, current);
     });
 
@@ -383,7 +415,11 @@ function buildPortfolioCurve(
 
   orderedPeriods.forEach((period, index) => {
     const periodReturn =
-      period.activeCount > 0 ? period.returnSum / period.activeCount : 0;
+      period.aggregationMode === "sum"
+        ? period.returnSum
+        : period.activeCount > 0
+          ? period.returnSum / period.activeCount
+          : 0;
     portfolioValue *= 1 + periodReturn;
     points.push({
       x: (index + 1) / orderedPeriods.length,
@@ -462,43 +498,109 @@ async function loadRun(modelName: string, datasetName: string, runPath: string) 
   } satisfies ExperimentRun;
 }
 
+async function loadStrategyRun(strategyName: string, datasetName: string, runPath: string) {
+  const metricsPath = path.join(runPath, "metrics.json");
+  if (!(await exists(metricsPath))) {
+    return null;
+  }
+
+  const [metrics, metadata, predictionRows, tradingSummary, tradeLogRows, stats] =
+    await Promise.all([
+      readJsonFile<Record<string, MetricValue>>(metricsPath, {}),
+      readJsonFile<Record<string, JsonLike>>(path.join(runPath, "metadata.json"), {}),
+      readCsvRows(path.join(runPath, "predictions.csv")),
+      readJsonFile<Record<string, MetricValue>>(path.join(runPath, "trading_summary.json"), {}),
+      readCsvRows(path.join(runPath, "trade_log.csv")),
+      fs.stat(metricsPath),
+    ]);
+
+  return {
+    id: `${strategyName}/${datasetName}`,
+    label: `${strategyName} / ${datasetName}`,
+    strategyName,
+    datasetName,
+    updatedAt: stats.mtime.toISOString(),
+    metrics,
+    metadata,
+    predictions: buildTablePreview(predictionRows, PREDICTION_PREVIEW_ROWS),
+    tradeLog: buildTablePreview(tradeLogRows, TRADE_PREVIEW_ROWS),
+    tradingSummary,
+    visuals: {
+      portfolioCurve: buildPortfolioCurve(tradeLogRows),
+    },
+  } satisfies StrategyRun;
+}
+
 export async function loadDashboardData(
   options: LoadDashboardDataOptions = {},
 ): Promise<DashboardData> {
   const datasetNameFilter = options.datasetName?.trim() || null;
-  if (!(await exists(EXPERIMENT_ROOT))) {
+  const experimentRootExists = await exists(EXPERIMENT_ROOT);
+  const strategyRootExists = await exists(STRATEGY_ANALYSIS_ROOT);
+
+  if (!experimentRootExists && !strategyRootExists) {
     return {
       artifactRoot: datasetNameFilter
         ? `artifacts/experiments/*/${datasetNameFilter}`
         : "artifacts/experiments",
       runs: [],
+      strategyArtifactRoot: datasetNameFilter
+        ? `artifacts/strategy_analysis/*/${datasetNameFilter}`
+        : "artifacts/strategy_analysis",
+      strategyRuns: [],
     };
   }
 
-  const modelEntries = await fs.readdir(EXPERIMENT_ROOT, { withFileTypes: true });
-  const runsByModel = await Promise.all(
-    modelEntries
-      .filter((entry) => entry.isDirectory())
-      .map(async (modelEntry) => {
-        const modelPath = path.join(EXPERIMENT_ROOT, modelEntry.name);
-        const runDirectories = await listRunDirectories(modelPath, datasetNameFilter);
-        const loadedRuns = await Promise.all(
-          runDirectories.map(({ datasetName, runPath }) =>
-            loadRun(modelEntry.name, datasetName, runPath),
-          ),
-        );
-        return loadedRuns.filter((run): run is ExperimentRun => run !== null);
-      }),
-  );
+  const runsByModel = experimentRootExists
+    ? await Promise.all(
+        (await fs.readdir(EXPERIMENT_ROOT, { withFileTypes: true }))
+          .filter((entry) => entry.isDirectory())
+          .map(async (modelEntry) => {
+            const modelPath = path.join(EXPERIMENT_ROOT, modelEntry.name);
+            const runDirectories = await listRunDirectories(modelPath, datasetNameFilter);
+            const loadedRuns = await Promise.all(
+              runDirectories.map(({ datasetName, runPath }) =>
+                loadRun(modelEntry.name, datasetName, runPath),
+              ),
+            );
+            return loadedRuns.filter((run): run is ExperimentRun => run !== null);
+          }),
+      )
+    : [];
 
   const runs = runsByModel.flat();
+  const strategyRuns = strategyRootExists
+    ? (
+        await Promise.all(
+          (
+            await fs.readdir(STRATEGY_ANALYSIS_ROOT, { withFileTypes: true })
+          )
+            .filter((entry) => entry.isDirectory())
+            .map(async (strategyEntry) => {
+              const strategyPath = path.join(STRATEGY_ANALYSIS_ROOT, strategyEntry.name);
+              const runDirectories = await listRunDirectories(strategyPath, datasetNameFilter);
+              const loadedRuns = await Promise.all(
+                runDirectories.map(({ datasetName, runPath }) =>
+                  loadStrategyRun(strategyEntry.name, datasetName, runPath),
+                ),
+              );
+              return loadedRuns.filter((run): run is StrategyRun => run !== null);
+            }),
+        )
+      ).flat()
+    : [];
 
   runs.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  strategyRuns.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   return {
     artifactRoot: datasetNameFilter
       ? `artifacts/experiments/*/${datasetNameFilter}`
       : "artifacts/experiments",
     runs,
+    strategyArtifactRoot: datasetNameFilter
+      ? `artifacts/strategy_analysis/*/${datasetNameFilter}`
+      : "artifacts/strategy_analysis",
+    strategyRuns,
   };
 }

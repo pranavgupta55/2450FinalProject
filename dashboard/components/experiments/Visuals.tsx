@@ -5,6 +5,7 @@ import type {
   ExperimentRun,
   FeatureImportanceDatum,
   MetricValue,
+  StrategyRun,
 } from "@/lib/experiments";
 
 const PERFORMANCE_METRICS = [
@@ -98,6 +99,22 @@ function formatMetricLabel(metric: string) {
   }
 
   return metric.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatStrategyLabel(strategyName: string) {
+  if (strategyName === "sp500_buy_hold") {
+    return "S&P 500 Buy & Hold";
+  }
+  if (strategyName === "random_forest_strategy") {
+    return "Random Forest";
+  }
+  if (strategyName === "xgboost_strategy") {
+    return "XGBoost";
+  }
+  if (strategyName === "random_strategy") {
+    return "Random";
+  }
+  return strategyName.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getPerformanceMetricKeys(runs: ExperimentRun[]) {
@@ -875,6 +892,166 @@ export function TradingComparisonChart({ runs }: { runs: ExperimentRun[] }) {
                   {formatPercentValue(item.totalReturn)}
                 </p>
               </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function StrategyComparisonChart({ runs }: { runs: StrategyRun[] }) {
+  const strategyRuns = runs.filter((run) => run.visuals.portfolioCurve.length > 1);
+
+  if (strategyRuns.length === 0) {
+    return (
+      <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+        <Eyebrow title="Strategy Return Comparison" count="Strategy analysis unavailable" />
+        <div className="py-8 text-center font-mono text-sm text-text-dim">
+          [ STRATEGY_COMPARISON_OFFLINE ]
+        </div>
+      </div>
+    );
+  }
+
+  const allValues = strategyRuns.flatMap((run) =>
+    run.visuals.portfolioCurve.map((point) => point.portfolioValue),
+  );
+  const minValue = Math.min(...allValues);
+  const maxValue = Math.max(...allValues);
+  const padding = Math.max((maxValue - minValue) * 0.08, 4);
+  const chartMin = Math.max(0, minValue - padding);
+  const chartMax = maxValue + padding;
+
+  return (
+    <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
+      <Eyebrow
+        title="Strategy Return Comparison"
+        count={`${strategyRuns.length} strategy curves loaded`}
+      />
+
+      <div className="mb-8 flex flex-wrap gap-3">
+        {strategyRuns.map((run, index) => (
+          <div
+            key={run.id}
+            className="inline-flex items-center gap-2 rounded-full border border-border-light bg-bg-base px-3 py-1"
+          >
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${RUN_COLOR_CLASSES[index % RUN_COLOR_CLASSES.length]}`}
+            />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-main">
+              {formatStrategyLabel(run.strategyName)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-auto w-full">
+        <rect
+          x={CHART_PADDING}
+          y={CHART_PADDING}
+          width={CHART_WIDTH - CHART_PADDING * 2}
+          height={CHART_HEIGHT - CHART_PADDING * 2}
+          fill="#151412"
+          stroke="rgba(255,255,255,0.08)"
+        />
+
+        {renderValueGridLines(chartMin, chartMax)}
+
+        {strategyRuns.map((run, index) => {
+          const points = run.visuals.portfolioCurve;
+          const path = buildValueLinePath(points, chartMin, chartMax);
+          if (!path) {
+            return null;
+          }
+          const lastPoint = points[points.length - 1];
+          const drawableWidth = CHART_WIDTH - CHART_PADDING * 2;
+          const drawableHeight = CHART_HEIGHT - CHART_PADDING * 2;
+          const normalizedY =
+            (lastPoint.portfolioValue - chartMin) / Math.max(chartMax - chartMin, 1);
+          const circleX = CHART_PADDING + lastPoint.x * drawableWidth;
+          const circleY = CHART_HEIGHT - CHART_PADDING - normalizedY * drawableHeight;
+
+          return (
+            <g key={`strategy-${run.id}`}>
+              <path
+                d={path}
+                fill="none"
+                stroke={RUN_COLORS[index % RUN_COLORS.length]}
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <circle
+                cx={circleX}
+                cy={circleY}
+                r="4"
+                fill={RUN_COLORS[index % RUN_COLORS.length]}
+                stroke="#151412"
+                strokeWidth="2"
+              />
+            </g>
+          );
+        })}
+
+        <text
+          x={CHART_WIDTH / 2}
+          y={CHART_HEIGHT - 4}
+          textAnchor="middle"
+          fill="#7A7873"
+          fontSize="10"
+          style={{ letterSpacing: "0.18em", textTransform: "uppercase" }}
+        >
+          Backtest Window
+        </text>
+        <text
+          x={14}
+          y={CHART_HEIGHT / 2}
+          textAnchor="middle"
+          fill="#7A7873"
+          fontSize="10"
+          transform={`rotate(-90 14 ${CHART_HEIGHT / 2})`}
+          style={{ letterSpacing: "0.18em", textTransform: "uppercase" }}
+        >
+          Portfolio Value
+        </text>
+      </svg>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {strategyRuns.map((run, index) => {
+          const startValue = run.visuals.portfolioCurve[0]?.portfolioValue ?? 100;
+          const endValue =
+            run.visuals.portfolioCurve[run.visuals.portfolioCurve.length - 1]?.portfolioValue ??
+            startValue;
+          const totalReturn =
+            typeof run.tradingSummary.total_return === "number"
+              ? run.tradingSummary.total_return
+              : startValue > 0
+                ? endValue / startValue - 1
+                : 0;
+
+          return (
+            <div
+              key={`${run.id}-summary`}
+              className="rounded-xl border border-border-light/50 bg-bg-base p-4"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${RUN_COLOR_CLASSES[index % RUN_COLOR_CLASSES.length]}`}
+                />
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-main">
+                  {formatStrategyLabel(run.strategyName)}
+                </p>
+              </div>
+              <p className="mt-3 font-serif text-3xl text-text-main">
+                {formatCurrencyValue(endValue)}
+              </p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                {formatPercentValue(totalReturn)} total return
+              </p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                {formatPercentValue(run.tradingSummary.max_drawdown ?? null)} max drawdown
+              </p>
             </div>
           );
         })}

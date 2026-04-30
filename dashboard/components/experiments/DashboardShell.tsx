@@ -10,6 +10,7 @@ import {
   FeatureImportanceChart,
   MetricsGraph,
   PortfolioWorthChart,
+  StrategyComparisonChart,
   TradingComparisonChart,
   formatCurrencyValue,
   formatMetricValue,
@@ -382,6 +383,29 @@ export function DashboardShell({ data }: { data: DashboardData }) {
         <Eyebrow title="Cross-Run View" count="Side-by-side metric matrix" />
         <MetricsGraph runs={data.runs} />
         <ComparisonTable runs={data.runs} />
+      </section>
+
+      <section id="strategies" className="scroll-mt-32 space-y-12">
+        <Eyebrow
+          title="Strategy Comparison"
+          count={
+            data.strategyRuns.length > 0
+              ? `${data.strategyRuns.length} strategy bundle${data.strategyRuns.length === 1 ? "" : "s"}`
+              : "No strategy analysis found"
+          }
+        />
+        <StrategyComparisonChart runs={data.strategyRuns} />
+        <TablePanel
+          title="Strategy Trade Preview"
+          count={
+            data.strategyRuns[0]
+              ? `${data.strategyRuns[0].tradeLog.rows.length} of ${data.strategyRuns[0].tradeLog.totalCount} rows from ${data.strategyRuns[0].strategyName}`
+              : "Preview unavailable"
+          }
+          columns={data.strategyRuns[0]?.tradeLog.columns ?? []}
+          rows={data.strategyRuns[0]?.tradeLog.rows ?? []}
+          emptyLabel="[ STRATEGY_TRADE_PREVIEW_EMPTY ]"
+        />
       </section>
 
       <RunInspector

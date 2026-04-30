@@ -13,6 +13,7 @@ const SECTIONS = [
   { id: "trading", label: "Trading", number: "05" },
   { id: "importance", label: "Importance", number: "06" },
   { id: "comparison", label: "Comparison", number: "07" },
+  { id: "strategies", label: "Strategies", number: "08" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
