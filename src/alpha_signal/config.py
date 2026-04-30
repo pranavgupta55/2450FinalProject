@@ -23,6 +23,7 @@ BASE_NUMERIC_FEATURES = [
     "price_ma_20",
     "volatility_20",
     "sec_event_count",
+    "sec_filing_text_count",
     "finnhub_event_count",
     "yahoo_event_count",
 ]
@@ -31,6 +32,9 @@ DERIVED_NUMERIC_FEATURES = [
     "has_sec_filing",
     "has_finnhub_news",
     "has_yahoo_news",
+    "has_text",
+    "text_source_count",
+    "event_text_char_count",
     "price_vs_ma_5",
     "price_vs_ma_20",
     "volume_vs_ma_5",
@@ -44,6 +48,12 @@ DEFAULT_CATEGORICAL_FEATURES = ["ticker"]
 
 TEXT_PLACEHOLDER_COLUMNS = [
     "sec_latest_filing_url",
+    "sec_filing_text",
     "finnhub_headline_sample",
+    "finnhub_summary_sample",
+    "finnhub_news_text",
     "yahoo_headline_sample",
+    "yahoo_summary_sample",
+    "yahoo_news_text",
+    "combined_event_text",
 ]

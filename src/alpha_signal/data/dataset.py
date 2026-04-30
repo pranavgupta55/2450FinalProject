@@ -49,9 +49,16 @@ def build_structured_modeling_dataset(
     work = work.dropna(subset=[label_column]).copy()
     work[label_column] = work[label_column].astype(int)
 
-    for col in ["sec_event_count", "finnhub_event_count", "yahoo_event_count"]:
-        if col in work.columns:
-            work[col] = pd.to_numeric(work[col], errors="coerce").fillna(0).astype(int)
+    event_count_columns = [
+        "sec_event_count",
+        "sec_filing_text_count",
+        "finnhub_event_count",
+        "yahoo_event_count",
+    ]
+    for col in event_count_columns:
+        if col not in work.columns:
+            work[col] = 0
+        work[col] = pd.to_numeric(work[col], errors="coerce").fillna(0).astype(int)
 
     numeric_seed_columns = [
         "close",
@@ -61,6 +68,7 @@ def build_structured_modeling_dataset(
         "price_ma_20",
         "volatility_20",
         "future_alpha_5d",
+        "event_text_char_count",
     ]
     for col in numeric_seed_columns:
         if col in work.columns:
@@ -69,6 +77,26 @@ def build_structured_modeling_dataset(
     work["has_sec_filing"] = (work["sec_event_count"] > 0).astype(int)
     work["has_finnhub_news"] = (work["finnhub_event_count"] > 0).astype(int)
     work["has_yahoo_news"] = (work["yahoo_event_count"] > 0).astype(int)
+
+    text_columns = ["sec_filing_text", "finnhub_news_text", "yahoo_news_text"]
+    for col in text_columns:
+        if col not in work.columns:
+            work[col] = ""
+        work[col] = work[col].fillna("").astype(str)
+
+    if "combined_event_text" not in work.columns:
+        work["combined_event_text"] = (
+            work[text_columns].agg(" ".join, axis=1).str.split().str.join(" ")
+        )
+    else:
+        work["combined_event_text"] = work["combined_event_text"].fillna("").astype(str)
+
+    work["has_text"] = (work["combined_event_text"].str.len() > 0).astype(int)
+    work["text_source_count"] = work[text_columns].apply(
+        lambda row: sum(1 for value in row if str(value).strip()),
+        axis=1,
+    )
+    work["event_text_char_count"] = work["combined_event_text"].str.len().astype(int)
 
     work["price_vs_ma_5"] = _safe_relative_gap(work["close"], work["price_ma_5"])
     work["price_vs_ma_20"] = _safe_relative_gap(work["close"], work["price_ma_20"])
