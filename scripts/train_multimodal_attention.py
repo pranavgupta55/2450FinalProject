@@ -117,6 +117,12 @@ def parse_args():
     parser.add_argument("--alpha-trade-threshold", type=float, default=None)
     parser.add_argument("--alpha-trade-objective", type=str, default=DEFAULT_ALPHA_TRADE_OBJECTIVE)
     parser.add_argument("--min-trades-for-threshold", type=int, default=DEFAULT_MIN_TRADES_FOR_THRESHOLD)
+    parser.add_argument(
+        "--log-every-batches",
+        type=int,
+        default=0,
+        help="Print plain progress logs every N training batches. Useful in Colab subprocess output.",
+    )
     return parser.parse_args()
 
 
@@ -362,6 +368,7 @@ def evaluate_model(
     threshold: float,
     alpha_loss_weight: float,
     progress_label: str | None = None,
+    progress_leave: bool = True,
 ):
     model.eval()
     all_probabilities = []
@@ -376,7 +383,7 @@ def evaluate_model(
 
     iterator = loader
     if progress_label:
-        iterator = tqdm(loader, desc=progress_label, leave=False)
+        iterator = tqdm(loader, desc=progress_label, leave=progress_leave)
 
     with torch.no_grad():
         for batch in iterator:
@@ -573,6 +580,23 @@ def main():
         collate_fn=collate_fn,
     )
 
+    print(
+        "Training setup: "
+        f"device={device}, train_rows={len(train_dataset)}, val_rows={len(val_dataset)}, "
+        f"test_rows={len(test_dataset)}, train_batches={len(train_loader)}, "
+        f"val_batches={len(val_loader)}, test_batches={len(test_loader)}, "
+        f"batch_size={args.batch_size}, max_length={args.max_length}, "
+        f"include_ticker={args.include_ticker}, freeze_finbert={not args.unfreeze_finbert}",
+        flush=True,
+    )
+    print(
+        "Text coverage: "
+        f"train={float(inner_train_df['has_text'].mean()) if len(inner_train_df) else 0.0:.4f}, "
+        f"val={float(val_df['has_text'].mean()) if len(val_df) else 0.0:.4f}, "
+        f"test={float(test_with_text['has_text'].mean()) if len(test_with_text) else 0.0:.4f}",
+        flush=True,
+    )
+
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     checkpoint_config = {
         "market_dim": len(market_columns),
@@ -596,6 +620,7 @@ def main():
 
     for epoch in range(args.epochs):
         model.train()
+        print(f"Starting epoch {epoch + 1}/{args.epochs}", flush=True)
         running_loss = 0.0
         running_event_loss = 0.0
         running_alpha_loss = 0.0
@@ -603,10 +628,10 @@ def main():
         train_iterator = tqdm(
             train_loader,
             desc=f"Epoch {epoch + 1}/{args.epochs} train",
-            leave=False,
+            leave=True,
         )
 
-        for batch in train_iterator:
+        for batch_index, batch in enumerate(train_iterator, start=1):
             batch = move_batch_to_device(batch, device)
             optimizer.zero_grad(set_to_none=True)
             outputs = model(
@@ -637,6 +662,18 @@ def main():
                 event=f"{running_event_loss / running_batches:.4f}",
                 alpha=f"{running_alpha_loss / running_batches:.4f}",
             )
+            if args.log_every_batches > 0 and (
+                batch_index == 1
+                or batch_index % args.log_every_batches == 0
+                or batch_index == len(train_loader)
+            ):
+                print(
+                    f"Epoch {epoch + 1}/{args.epochs} batch {batch_index}/{len(train_loader)} "
+                    f"train_total={running_loss / running_batches:.4f} "
+                    f"train_event={running_event_loss / running_batches:.4f} "
+                    f"train_alpha={running_alpha_loss / running_batches:.4f}",
+                    flush=True,
+                )
 
         val_result = evaluate_model(
             torch=torch,
@@ -704,7 +741,8 @@ def main():
             f"train_alpha={epoch_record['train_alpha_loss']:.4f} "
             f"val_total={epoch_record['val_total_loss']:.4f} "
             f"val_event={epoch_record['val_event_loss']:.4f} "
-            f"val_alpha={epoch_record['val_alpha_loss']:.4f}"
+            f"val_alpha={epoch_record['val_alpha_loss']:.4f}",
+            flush=True,
         )
 
     if best_checkpoint_path is None:
