@@ -6,6 +6,7 @@ __pycache__/
 data/raw_data/
 data/test_ds/
 data/sp500_500_2yr/
+data/sp500_500_2yr_quarterly/
 data/top50_5yr/
 artifacts/
 dashboard/.next/
