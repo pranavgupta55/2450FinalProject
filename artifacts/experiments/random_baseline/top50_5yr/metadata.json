@@ -1,0 +1,56 @@
+{
+  "model_name": "random_baseline",
+  "dataset_name": "top50_5yr",
+  "label_column": "label_abs_alpha_gt_1pct",
+  "random_state": 42,
+  "train_rows": 6061,
+  "test_rows": 1537,
+  "capital_per_trade": 10000.0,
+  "alpha_trade_threshold": 0.0,
+  "baseline_strategy": "uniform_probability_and_gaussian_alpha_score",
+  "split_metadata": {
+    "time_column": "week_start",
+    "test_ratio": 0.2,
+    "train_rows": 6061,
+    "test_rows": 1537,
+    "train_periods": 209,
+    "test_periods": 53,
+    "train_start": "2021-04-27 00:00:00",
+    "train_end": "2025-04-22 00:00:00",
+    "test_start": "2025-04-29 00:00:00",
+    "test_end": "2026-04-28 00:00:00",
+    "dataset_name": "top50_5yr",
+    "input_dir": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/data/top50_5yr",
+    "total_rows": 7598,
+    "feature_spec": {
+      "numeric": [
+        "close",
+        "volume",
+        "vol_ma_5",
+        "price_ma_5",
+        "price_ma_20",
+        "volatility_20",
+        "sec_event_count",
+        "sec_filing_text_count",
+        "finnhub_event_count",
+        "yahoo_event_count",
+        "has_sec_filing",
+        "has_finnhub_news",
+        "has_yahoo_news",
+        "has_text",
+        "text_source_count",
+        "event_text_char_count",
+        "price_vs_ma_5",
+        "price_vs_ma_20",
+        "volume_vs_ma_5",
+        "week_of_year",
+        "month",
+        "days_from_start"
+      ],
+      "categorical": [
+        "ticker"
+      ]
+    },
+    "label_positive_rate": 0.7208475914714398
+  }
+}

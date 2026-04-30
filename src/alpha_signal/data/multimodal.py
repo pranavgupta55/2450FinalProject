@@ -151,7 +151,9 @@ def attach_weekly_text_bundle(
     dataset_dir: str | Path,
 ) -> pd.DataFrame:
     text_bundle = build_weekly_text_bundle(dataset_dir)
-    work = split_df.copy()
+    bundle_columns = ["sec_text", "finnhub_text", "yahoo_text", "combined_text", "has_text"]
+    existing_bundle_columns = [column for column in bundle_columns if column in split_df.columns]
+    work = split_df.drop(columns=existing_bundle_columns).copy()
     work["week_start"] = pd.to_datetime(work["week_start"], errors="coerce")
     merged = work.merge(text_bundle, on=["ticker", "week_start"], how="left")
     for column in ["sec_text", "finnhub_text", "yahoo_text", "combined_text"]:
