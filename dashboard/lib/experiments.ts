@@ -105,6 +105,11 @@ const TRADE_PREVIEW_ROWS = 50;
 const FEATURE_CHART_ROWS = 12;
 const PORTFOLIO_STARTING_CAPITAL = 100;
 
+const MODEL_PRECEDENCE: Record<string, number> = {
+  finbert_multimodal_attention: 2,
+  finbert: 1,
+};
+
 type CsvRow = Record<string, string>;
 
 interface PredictionRow {
@@ -444,6 +449,13 @@ async function listRunDirectories(modelPath: string, datasetNameFilter: string |
     }));
 }
 
+function canonicalizeExperimentModelName(modelName: string) {
+  if (modelName === "finbert") {
+    return "finbert_multimodal_attention";
+  }
+  return modelName;
+}
+
 async function loadRun(modelName: string, datasetName: string, runPath: string) {
   const metricsPath = path.join(runPath, "metrics.json");
   if (!(await exists(metricsPath))) {
@@ -590,14 +602,34 @@ export async function loadDashboardData(
       ).flat()
     : [];
 
-  runs.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  const canonicalRuns = Array.from(
+    runs.reduce((accumulator, run) => {
+      const canonicalModelName = canonicalizeExperimentModelName(run.modelName);
+      const canonicalId = `${canonicalModelName}/${run.datasetName}`;
+      const current = accumulator.get(canonicalId);
+      const nextRun =
+        !current ||
+        (MODEL_PRECEDENCE[run.modelName] ?? 0) > (MODEL_PRECEDENCE[current.modelName] ?? 0)
+          ? {
+              ...run,
+              id: canonicalId,
+              label: `${canonicalModelName} / ${run.datasetName}`,
+              modelName: canonicalModelName,
+            }
+          : current;
+      accumulator.set(canonicalId, nextRun);
+      return accumulator;
+    }, new Map<string, ExperimentRun>()).values(),
+  );
+
+  canonicalRuns.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   strategyRuns.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   return {
     artifactRoot: datasetNameFilter
       ? `artifacts/experiments/*/${datasetNameFilter}`
       : "artifacts/experiments",
-    runs,
+    runs: canonicalRuns,
     strategyArtifactRoot: datasetNameFilter
       ? `artifacts/strategy_analysis/*/${datasetNameFilter}`
       : "artifacts/strategy_analysis",

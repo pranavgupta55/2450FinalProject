@@ -81,6 +81,8 @@ def main():
         "model_name": "random_baseline",
         "dataset_name": args.dataset_name,
         "label_column": DEFAULT_LABEL_COLUMN,
+        "signal_regime": "positive_only",
+        "trading_mode": "long_only",
         "random_state": args.random_state,
         "train_rows": int(len(train_df)),
         "test_rows": int(len(test_df)),

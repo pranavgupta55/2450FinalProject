@@ -89,6 +89,12 @@ npm run dev
 
 The dashboard reads existing artifacts from `artifacts/experiments/` and does not modify the ML pipeline.
 
+Build long-only strategy analysis artifacts for the returns graph:
+
+```bash
+python scripts/build_strategy_analysis.py --dataset-name test_ds --split-dir artifacts/splits/test_ds
+```
+
 ## Artifact Layout
 
 Each experiment run is stored under:
@@ -106,5 +112,23 @@ Important files per run:
 - `trading_summary.json`
 - `trade_log.csv`
 - `model.pkl` or `model.pt`
+
+Strategy-analysis bundles are stored under:
+
+```text
+artifacts/strategy_analysis/<strategy_name>/<dataset_name>/
+```
+
+The long-only returns graph will pick up:
+
+- `artifacts/experiments/random_forest/<dataset_name>/`
+- `artifacts/experiments/xgboost/<dataset_name>/`
+- `artifacts/experiments/sp500_buy_hold/<dataset_name>/`
+- `artifacts/experiments/finbert_multimodal_attention/<dataset_name>/`
+- `artifacts/experiments/finbert/<dataset_name>/`
+
+If FinBERT artifacts are added later from another machine, rerun `scripts/build_strategy_analysis.py`
+and refresh the dashboard. This branch treats `finbert_multimodal_attention` as the preferred
+name when both FinBERT folder names exist.
 
 More detailed design notes in `docs/PROJECT_ARCHITECTURE.md`.

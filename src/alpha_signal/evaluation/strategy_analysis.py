@@ -50,6 +50,17 @@ def _resolve_position_size(
     requested_short: int,
     adaptive: bool,
 ) -> tuple[int, int]:
+    if requested_short == 0:
+        if universe_size < 1:
+            return 0, 0
+
+        effective_long = min(requested_long, universe_size)
+        if not adaptive and effective_long != requested_long:
+            raise ValueError(
+                "The requested long basket size could not be satisfied exactly for every rebalance period."
+            )
+        return effective_long, 0
+
     if universe_size < 2:
         return 0, 0
 
@@ -89,7 +100,7 @@ def _build_week_positions(
         requested_short=requested_short,
         adaptive=adaptive,
     )
-    if effective_long == 0 or effective_short == 0:
+    if effective_long == 0 or (requested_short > 0 and effective_short == 0):
         return pd.DataFrame()
 
     if selection_mode == "random":
@@ -97,22 +108,31 @@ def _build_week_positions(
             raise ValueError("Random strategy selection requires an RNG.")
         sampled = universe.sample(frac=1.0, random_state=int(rng.integers(0, 2**31 - 1)))
         long_positions = sampled.head(effective_long).copy()
-        short_positions = sampled.iloc[effective_long : effective_long + effective_short].copy()
+        short_positions = (
+            sampled.iloc[effective_long : effective_long + effective_short].copy()
+            if effective_short > 0
+            else sampled.iloc[0:0].copy()
+        )
     else:
         ranked = universe.sort_values(
             ["predicted_alpha_score", "ticker"],
             ascending=[False, True],
         ).reset_index(drop=True)
         long_positions = ranked.head(effective_long).copy()
-        short_positions = ranked.tail(effective_short).copy()
+        short_positions = (
+            ranked.tail(effective_short).copy()
+            if effective_short > 0
+            else ranked.iloc[0:0].copy()
+        )
 
     long_weight = 1.0 / effective_long if effective_long else 0.0
-    short_weight = 1.0 / effective_short if effective_short else 0.0
 
     long_positions["trade_position"] = 1
     long_positions["position_weight"] = long_weight
-    short_positions["trade_position"] = -1
-    short_positions["position_weight"] = short_weight
+    if effective_short > 0:
+        short_weight = 1.0 / effective_short
+        short_positions["trade_position"] = -1
+        short_positions["position_weight"] = short_weight
 
     selected = pd.concat([long_positions, short_positions], ignore_index=True)
     selected["realized_alpha"] = selected["future_alpha_5d"].fillna(0.0)
@@ -227,7 +247,7 @@ def build_cross_sectional_strategy(
     source_model_name: str | None,
     dataset_name: str,
     requested_k_long: int = 5,
-    requested_k_short: int = 5,
+    requested_k_short: int = 0,
     initial_capital: float = 100.0,
     random_state: int | None = None,
     adaptive: bool = False,
@@ -286,9 +306,17 @@ def build_cross_sectional_strategy(
         "source_model_name": source_model_name,
         "dataset_name": dataset_name,
         "rebalance_frequency": "weekly",
-        "portfolio_construction": "top_bottom_k_long_short"
-        if selection_mode == "ranked"
-        else "random_long_short",
+        "portfolio_construction": (
+            "top_bottom_k_long_short"
+            if selection_mode == "ranked" and requested_k_short > 0
+            else "top_k_long_only"
+            if selection_mode == "ranked"
+            else "random_long_short"
+            if requested_k_short > 0
+            else "random_long_only"
+        ),
+        "portfolio_type": "long_short" if requested_k_short > 0 else "long_only",
+        "trading_mode": "long_short" if requested_k_short > 0 else "long_only",
         "requested_k_long": int(requested_k_long),
         "requested_k_short": int(requested_k_short),
         "initial_capital": float(initial_capital),
@@ -356,6 +384,8 @@ def build_buy_hold_strategy_from_trade_log(
         "dataset_name": dataset_name,
         "rebalance_frequency": "daily",
         "portfolio_construction": "buy_and_hold",
+        "portfolio_type": "long_only",
+        "trading_mode": "buy_and_hold",
         "requested_k_long": 1,
         "requested_k_short": 0,
         "initial_capital": float(initial_capital),

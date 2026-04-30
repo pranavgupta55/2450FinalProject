@@ -12,6 +12,7 @@ def simulate_alpha_trading(
     alpha_threshold: float = 0.0,
     alpha_column: str = "predicted_alpha_score",
     realized_alpha_column: str = "future_alpha_5d",
+    trading_mode: str = "long_only",
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     work = predictions_df.copy()
     if alpha_column not in work.columns:
@@ -25,11 +26,16 @@ def simulate_alpha_trading(
 
     has_realized_alpha = work[realized_alpha_column].notna()
     score = work[alpha_column].to_numpy(dtype=float)
-    position = np.where(
-        score >= alpha_threshold,
-        1,
-        np.where(score <= -alpha_threshold, -1, 0),
-    )
+    if trading_mode == "long_only":
+        position = np.where(score >= alpha_threshold, 1, 0)
+    elif trading_mode == "long_short":
+        position = np.where(
+            score >= alpha_threshold,
+            1,
+            np.where(score <= -alpha_threshold, -1, 0),
+        )
+    else:
+        raise ValueError(f"Unsupported trading mode: {trading_mode}")
     position = np.where(has_realized_alpha.to_numpy(), position, 0)
 
     realized_alpha = work[realized_alpha_column].fillna(0.0).to_numpy(dtype=float)
@@ -57,6 +63,7 @@ def simulate_alpha_trading(
     hit_rate = float(traded["trade_correct_direction"].mean()) if trades_executed else 0.0
 
     summary = {
+        "trading_mode": trading_mode,
         "capital_per_trade": float(capital_per_trade),
         "alpha_threshold": float(alpha_threshold),
         "trades_executed": trades_executed,

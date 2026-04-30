@@ -198,6 +198,8 @@ def train_and_evaluate_model(
         "model_name": model_name,
         "dataset_name": dataset_name,
         "label_column": label_column,
+        "signal_regime": "positive_only",
+        "trading_mode": "long_only",
         "train_rows": int(len(train_df)),
         "test_rows": int(len(test_df)),
         "train_positive_rate": float(y_train.mean()) if len(y_train) else 0.0,

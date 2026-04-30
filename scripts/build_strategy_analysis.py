@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--output-root", type=str, default=None)
     parser.add_argument("--initial-capital", type=float, default=100.0)
     parser.add_argument("--k-long", type=int, default=5)
-    parser.add_argument("--k-short", type=int, default=5)
+    parser.add_argument("--k-short", type=int, default=0)
     parser.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
     return parser.parse_args()
 
@@ -49,11 +49,22 @@ def read_json(path: Path) -> dict:
 
 
 def build_strategy_sources(experiment_root: Path, dataset_name: str) -> dict[str, Path]:
-    return {
+    sources = {
         "random_forest": experiment_root / "random_forest" / dataset_name,
         "xgboost": experiment_root / "xgboost" / dataset_name,
         "sp500_buy_hold": experiment_root / "sp500_buy_hold" / dataset_name,
+        "finbert_multimodal_attention": experiment_root / "finbert_multimodal_attention" / dataset_name,
+        "finbert": experiment_root / "finbert" / dataset_name,
     }
+    return sources
+
+
+def resolve_optional_source(sources: dict[str, Path], candidates: list[str]) -> tuple[str, Path] | None:
+    for candidate in candidates:
+        candidate_path = sources[candidate]
+        if (candidate_path / "predictions.csv").exists():
+            return candidate, candidate_path
+    return None
 
 
 def main():
@@ -79,7 +90,7 @@ def main():
             source_model_name=model_name,
             dataset_name=args.dataset_name,
             requested_k_long=args.k_long,
-            requested_k_short=args.k_short,
+            requested_k_short=0,
             initial_capital=args.initial_capital,
             adaptive=True,
             selection_mode="ranked",
@@ -92,6 +103,33 @@ def main():
         )
         save_strategy_artifacts(output_dir, artifacts)
         created_outputs[f"{model_name}_strategy"] = str(output_dir)
+
+    finbert_source = resolve_optional_source(
+        sources,
+        ["finbert_multimodal_attention", "finbert"],
+    )
+    if finbert_source is not None:
+        finbert_source_name, finbert_source_dir = finbert_source
+        finbert_predictions = read_csv(finbert_source_dir / "predictions.csv")
+        finbert_artifacts = build_cross_sectional_strategy(
+            predictions_df=finbert_predictions,
+            strategy_name="finbert_strategy",
+            source_model_name=finbert_source_name,
+            dataset_name=args.dataset_name,
+            requested_k_long=args.k_long,
+            requested_k_short=0,
+            initial_capital=args.initial_capital,
+            adaptive=True,
+            selection_mode="ranked",
+            source_artifact_path=str(finbert_source_dir.resolve()),
+        )
+        finbert_output_dir = build_strategy_output_dir(
+            strategy_name="finbert_strategy",
+            dataset_name=args.dataset_name,
+            output_root=output_root,
+        )
+        save_strategy_artifacts(finbert_output_dir, finbert_artifacts)
+        created_outputs["finbert_strategy"] = str(finbert_output_dir)
 
     benchmark_dir = sources["sp500_buy_hold"]
     benchmark_trade_log = read_csv(benchmark_dir / "trade_log.csv")
@@ -118,7 +156,7 @@ def main():
         source_model_name=None,
         dataset_name=args.dataset_name,
         requested_k_long=args.k_long,
-        requested_k_short=args.k_short,
+        requested_k_short=0,
         initial_capital=args.initial_capital,
         random_state=random_state,
         adaptive=True,

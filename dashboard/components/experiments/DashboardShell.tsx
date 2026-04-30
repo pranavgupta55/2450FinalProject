@@ -390,7 +390,7 @@ export function DashboardShell({ data }: { data: DashboardData }) {
           title="Strategy Comparison"
           count={
             data.strategyRuns.length > 0
-              ? `${data.strategyRuns.length} strategy bundle${data.strategyRuns.length === 1 ? "" : "s"}`
+              ? `${data.strategyRuns.length} strategy bundle${data.strategyRuns.length === 1 ? "" : "s"} (long-only for models)`
               : "No strategy analysis found"
           }
         />

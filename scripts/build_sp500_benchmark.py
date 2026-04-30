@@ -162,6 +162,8 @@ def main():
     metadata = {
         "model_name": "sp500_buy_hold",
         "dataset_name": args.dataset_name,
+        "portfolio_type": "long_only",
+        "trading_mode": "buy_and_hold",
         "benchmark_symbol": "^GSPC",
         "benchmark_strategy": "buy_then_hold_until_latest_available_date",
         "initial_capital": float(args.initial_capital),

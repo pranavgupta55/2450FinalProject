@@ -114,6 +114,9 @@ function formatStrategyLabel(strategyName: string) {
   if (strategyName === "random_strategy") {
     return "Random";
   }
+  if (strategyName === "finbert_strategy") {
+    return "FinBERT";
+  }
   return strategyName.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
@@ -927,7 +930,7 @@ export function StrategyComparisonChart({ runs }: { runs: StrategyRun[] }) {
     <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
       <Eyebrow
         title="Strategy Return Comparison"
-        count={`${strategyRuns.length} strategy curves loaded`}
+        count={`${strategyRuns.length} strategy curves loaded (long-only for model strategies)`}
       />
 
       <div className="mb-8 flex flex-wrap gap-3">
@@ -1056,6 +1059,17 @@ export function StrategyComparisonChart({ runs }: { runs: StrategyRun[] }) {
           );
         })}
       </div>
+
+      {!strategyRuns.some((run) => run.strategyName === "finbert_strategy") ? (
+        <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+          FinBERT strategy not yet available. Add either
+          {" "}
+          <span className="text-text-main">artifacts/experiments/finbert_multimodal_attention/&lt;dataset&gt;</span>
+          {" "}or{" "}
+          <span className="text-text-main">artifacts/experiments/finbert/&lt;dataset&gt;</span>
+          , rerun strategy analysis, and refresh.
+        </p>
+      ) : null}
     </div>
   );
 }
