@@ -593,7 +593,7 @@ export function PortfolioWorthChart({ runs }: { runs: ExperimentRun[] }) {
     <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
         <Eyebrow
           title="Portfolio Worth"
-          count={`${portfolioRuns.length} strategy curves from $100 starting capital`}
+          count={`${portfolioRuns.length} long-only curves from $100 starting capital`}
         />
 
       <div className="mb-8 flex flex-wrap gap-3">
@@ -926,8 +926,8 @@ export function StrategyComparisonChart({ runs }: { runs: StrategyRun[] }) {
   return (
     <div className="rounded-xl border border-border-light bg-bg-panel p-6 shadow-2xl">
       <Eyebrow
-        title="Strategy Return Comparison"
-        count={`${strategyRuns.length} strategy curves loaded`}
+        title="Long-Only Strategy Return Comparison"
+        count={`${strategyRuns.length} long-only curves loaded`}
       />
 
       <div className="mb-8 flex flex-wrap gap-3">

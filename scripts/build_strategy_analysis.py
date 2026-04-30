@@ -31,7 +31,12 @@ def parse_args():
     parser.add_argument("--output-root", type=str, default=None)
     parser.add_argument("--initial-capital", type=float, default=100.0)
     parser.add_argument("--k-long", type=int, default=5)
-    parser.add_argument("--k-short", type=int, default=5)
+    parser.add_argument(
+        "--k-short",
+        type=int,
+        default=0,
+        help="Deprecated compatibility option. Current model strategies are long-only.",
+    )
     parser.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
     return parser.parse_args()
 

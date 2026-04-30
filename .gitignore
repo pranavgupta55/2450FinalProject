@@ -5,6 +5,8 @@ __pycache__/
 
 data/raw_data/
 data/test_ds/
+data/sp500_500_2yr/
+data/top50_5yr/
 artifacts/
 dashboard/.next/
 dashboard/node_modules/

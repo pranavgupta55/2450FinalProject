@@ -5,6 +5,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.alpha_signal.config import (
+    PORTFOLIO_TYPE_LONG_ONLY,
+    SIGNAL_REGIME_POSITIVE_ONLY,
+    TRADING_MODE_LONG_ONLY,
+)
+
 
 def simulate_alpha_trading(
     predictions_df: pd.DataFrame,
@@ -25,11 +31,7 @@ def simulate_alpha_trading(
 
     has_realized_alpha = work[realized_alpha_column].notna()
     score = work[alpha_column].to_numpy(dtype=float)
-    position = np.where(
-        score >= alpha_threshold,
-        1,
-        np.where(score <= -alpha_threshold, -1, 0),
-    )
+    position = np.where(score >= alpha_threshold, 1, 0)
     position = np.where(has_realized_alpha.to_numpy(), position, 0)
 
     realized_alpha = work[realized_alpha_column].fillna(0.0).to_numpy(dtype=float)
@@ -37,7 +39,7 @@ def simulate_alpha_trading(
     predicted_edge = capital_per_trade * score
 
     work["trade_position"] = position
-    work["trade_side"] = np.where(position > 0, "long", np.where(position < 0, "short", "flat"))
+    work["trade_side"] = np.where(position > 0, "long", "flat")
     work["predicted_edge_dollars"] = predicted_edge
     work["realized_alpha"] = realized_alpha
     work["pnl_dollars"] = pnl
@@ -59,9 +61,12 @@ def simulate_alpha_trading(
     summary = {
         "capital_per_trade": float(capital_per_trade),
         "alpha_threshold": float(alpha_threshold),
+        "trading_mode": TRADING_MODE_LONG_ONLY,
+        "signal_regime": SIGNAL_REGIME_POSITIVE_ONLY,
+        "portfolio_type": PORTFOLIO_TYPE_LONG_ONLY,
         "trades_executed": trades_executed,
         "long_trades": int((traded["trade_position"] > 0).sum()),
-        "short_trades": int((traded["trade_position"] < 0).sum()),
+        "short_trades": 0,
         "flat_rows": int((work["trade_position"] == 0).sum()),
         "hit_rate": hit_rate,
         "gross_profit_dollars": gross_profit,

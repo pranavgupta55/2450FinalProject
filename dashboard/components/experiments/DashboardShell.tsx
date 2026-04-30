@@ -387,7 +387,7 @@ export function DashboardShell({ data }: { data: DashboardData }) {
 
       <section id="strategies" className="scroll-mt-32 space-y-12">
         <Eyebrow
-          title="Strategy Comparison"
+          title="Long-Only Strategy Comparison"
           count={
             data.strategyRuns.length > 0
               ? `${data.strategyRuns.length} strategy bundle${data.strategyRuns.length === 1 ? "" : "s"}`
