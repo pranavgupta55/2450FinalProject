@@ -1,0 +1,22 @@
+{
+  "checkpoints": [
+    {
+      "epoch": 2,
+      "path": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/artifacts/experiments/finbert_multimodal_attention/sp500_500_2yr_quarterly/checkpoints/epoch_02.pt",
+      "val_total_loss": 0.513986822631624,
+      "val_event_loss": 0.5133007764816284,
+      "val_alpha_loss": 0.0013720986963663665,
+      "checkpoint_metric": "average_precision",
+      "checkpoint_metric_value": 0.8443270664131933
+    },
+    {
+      "epoch": 3,
+      "path": "/Users/rishabhtole/projects/penn-classes/cis2450/final-project/2450FinalProject/artifacts/experiments/finbert_multimodal_attention/sp500_500_2yr_quarterly/checkpoints/epoch_03.pt",
+      "val_total_loss": 0.5141668717066447,
+      "val_event_loss": 0.5134967946343951,
+      "val_alpha_loss": 0.0013401580282435236,
+      "checkpoint_metric": "average_precision",
+      "checkpoint_metric_value": 0.8482753561365335
+    }
+  ]
+}
